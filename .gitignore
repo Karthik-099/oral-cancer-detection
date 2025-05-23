@@ -1,24 +1,24 @@
-# Ignore the data folder and its contents (contains confidential images)
-data/
 
-# Ignore Python cache files
+data/
+oral/
+
+
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Ignore virtual environments
+
 env/
 venv/
 
-# Ignore Jupyter notebook checkpoints
+
 *.ipynb_checkpoints/
 
-# Ignore log files
+
 *.log
 
-# Ignore macOS system files
+
 .DS_Store
 
-# Ignore trained model weights (large files)
 models/*.pth

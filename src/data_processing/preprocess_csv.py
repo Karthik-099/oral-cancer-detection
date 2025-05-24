@@ -8,7 +8,7 @@ pd.options.display.max_rows = 1000
 pd.options.display.max_columns = 1000
 
 # Read the CSV file
-df = pd.read_csv('data/labels.csv')
+df = pd.read_csv('../../data/metadata.csv')  # Updated path
 
 # Drop rows with NaNs in key columns
 df.dropna(subset=['Risk', 'Specialist diagnosis'], inplace=True)
@@ -51,9 +51,9 @@ df['Lesion/patch'] = df['Lesion/patch'].astype(str).str.lower().map({'yes': 1, '
 data = []
 for idx, row in df.iterrows():
     patient_id = row['patient_id']
-    raw_patient_dir = f'data/raw/patient_{patient_id}'
-    mobilenet_patient_dir = f'data/processed/mobilenet/patient_{patient_id}'
-    unet_patient_dir = f'data/processed/unet/patient_{patient_id}'
+    raw_patient_dir = f'../../data/raw/patient_{patient_id}'  # Updated path
+    mobilenet_patient_dir = f'../../data/processed/mobilenet/patient_{patient_id}'  # Updated path
+    unet_patient_dir = f'../../data/processed/unet/patient_{patient_id}'  # Updated path
     
     # Create processed directories if they don't exist
     os.makedirs(mobilenet_patient_dir, exist_ok=True)
@@ -72,13 +72,12 @@ for idx, row in df.iterrows():
         img_mobilenet = img.resize((224, 224))
         mobilenet_img_path = os.path.join(mobilenet_patient_dir, img_file.name)
         img_mobilenet.save(mobilenet_img_path)
-        
+       
         # Resize for U-Net (512x512)
         img_unet = img.resize((512, 512))
         unet_img_path = os.path.join(unet_patient_dir, img_file.name)
         img_unet.save(unet_img_path)
         
-        # Add the resized image paths and patient data to the dataset
         data.append({
             'mobilenet_image_path': mobilenet_img_path,  # For MobileNet
             'unet_image_path': unet_img_path,  # For U-Net
@@ -99,10 +98,7 @@ for idx, row in df.iterrows():
 processed_df = pd.DataFrame(data)
 
 # Save the processed DataFrame to a CSV file
-processed_df.to_csv('data/processed_labels.csv', index=False)
+processed_df.to_csv('../../data/processed_labels.csv', index=False)  # Updated path
 
-print("Preprocessing complete. Processed data saved to 'data/processed_labels.csv'.")
+print("Preprocessing complete. Processed data saved to '../../data/processed_labels.csv'.")
 print(processed_df.head())
-
-
-

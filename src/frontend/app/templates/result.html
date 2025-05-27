@@ -1,0 +1,41 @@
+<!-- templates/result.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        img {
+            max-width: 300px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prediction Result</h1>
+    <div class="result">
+        <p><strong>Classification:</strong> {{ classification }}</p>
+        <p><strong>Probability:</strong> {{ probability | round(2) }}</p>
+        <h3>Uploaded Image:</h3>
+        <img src="data:image/png;base64,{{ image_base64 }}" alt="Uploaded Image">
+        {% if mask_base64 %}
+            <h3>Segmentation Mask (Lesion Regions):</h3>
+            <img src="data:image/png;base64,{{ mask_base64 }}" alt="Segmentation Mask">
+        {% endif %}
+        <p><a href="/">Upload Another Image</a></p>
+    </div>
+</body>
+</html>

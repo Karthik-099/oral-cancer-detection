@@ -1,17 +1,19 @@
 import pandas as pd
 import os
 from pathlib import Path
-from PIL import Image
 
 # Set display options for better visibility
 pd.options.display.max_rows = 1000
 pd.options.display.max_columns = 1000
 
 # Read the CSV file
-df = pd.read_csv('../../data/metadata.csv')  # Updated path
+df = pd.read_csv('../../data/metadata.csv')
+print(f"Initial number of rows in df: {len(df)}")
+print("Columns in df:", df.columns.tolist())
 
 # Drop rows with NaNs in key columns
 df.dropna(subset=['Risk', 'Specialist diagnosis'], inplace=True)
+print(f"Number of rows after dropna: {len(df)}")
 
 # Replace '-' with 0
 df.replace('-', 0, inplace=True)
@@ -21,6 +23,7 @@ df['patient_id'] = df['FLW username'].apply(lambda x: int(str(x).split()[1]))
 
 # Remove rows where both Risk and Specialist diagnosis are 0
 df = df[(df['Risk'] != 0) | (df['Specialist diagnosis'] != 0)]
+print(f"Number of rows in df after filtering: {len(df)}")
 
 # Map tobacco/alcohol use: 'never'->0, 'past'->1, 'current'->2
 use_map = {'never': 0, 'past': 1, 'current': 2}
@@ -47,41 +50,26 @@ df['Specialist diagnosis'] = df['Specialist diagnosis'].astype(str).str.lower().
 df['Able to open mouth'] = df['Able to open mouth'].astype(str).str.lower().map({'yes': 1, 'no': 0}).fillna(0)
 df['Lesion/patch'] = df['Lesion/patch'].astype(str).str.lower().map({'yes': 1, 'no': 0}).fillna(0)
 
-# Map images to patients and resize for both MobileNet and U-Net
+# Map images to patients (store original image paths)
 data = []
 for idx, row in df.iterrows():
     patient_id = row['patient_id']
-    raw_patient_dir = f'../../data/raw/patient_{patient_id}'  # Updated path
-    mobilenet_patient_dir = f'../../data/processed/mobilenet/patient_{patient_id}'  # Updated path
-    unet_patient_dir = f'../../data/processed/unet/patient_{patient_id}'  # Updated path
-    
-    # Create processed directories if they don't exist
-    os.makedirs(mobilenet_patient_dir, exist_ok=True)
-    os.makedirs(unet_patient_dir, exist_ok=True)
+    raw_patient_dir = f'../../data/raw/patient_{patient_id}'
     
     # Check if the raw patient directory exists
+    print(f"Checking raw directory: {raw_patient_dir}")
     if not os.path.exists(raw_patient_dir):
+        print(f"Directory {raw_patient_dir} does not exist, skipping...")
         continue
     
-    # Find all .jpg images for this patient
-    for img_file in Path(raw_patient_dir).glob('*.jpg'):
-        # Open the image
-        img = Image.open(img_file)
-        
-        # Resize for MobileNet (224x224)
-        img_mobilenet = img.resize((224, 224))
-        mobilenet_img_path = os.path.join(mobilenet_patient_dir, img_file.name)
-        img_mobilenet.save(mobilenet_img_path)
-       
-        # Resize for U-Net (512x512)
-        img_unet = img.resize((512, 512))
-        unet_img_path = os.path.join(unet_patient_dir, img_file.name)
-        img_unet.save(unet_img_path)
-        
+    # Find all .jpeg and .jpg images for this patient (case-insensitive)
+    img_files = list(Path(raw_patient_dir).glob('*.[jJ][pP][eE]?[gG]'))
+    print(f"Found {len(img_files)} images in {raw_patient_dir}")
+    for img_file in img_files:
+        print(f"Processing image path: {img_file}")
         data.append({
-            'mobilenet_image_path': mobilenet_img_path,  # For MobileNet
-            'unet_image_path': unet_img_path,  # For U-Net
-            'label': row['Specialist diagnosis'],  # Use Specialist diagnosis as the label
+            'image_path': str(img_file),  # Store the original image path
+            'label': row['Specialist diagnosis'],
             'patient_id': patient_id,
             'risk': row['Risk'],
             'gender': row['Gender'],
@@ -98,7 +86,7 @@ for idx, row in df.iterrows():
 processed_df = pd.DataFrame(data)
 
 # Save the processed DataFrame to a CSV file
-processed_df.to_csv('../../data/processed_labels.csv', index=False)  # Updated path
+processed_df.to_csv('../../data/processed_labels.csv', index=False)
 
 print("Preprocessing complete. Processed data saved to '../../data/processed_labels.csv'.")
 print(processed_df.head())

@@ -25,6 +25,7 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 patient_id = sys.argv[1]
+
 directory = rf"/home/karthik/oral-cancer-detection/data/raw{patient_id}"
 
 if not check_image_dimensions(directory):

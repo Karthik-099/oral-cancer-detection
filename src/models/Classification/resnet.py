@@ -1,3 +1,4 @@
+#This code has resnet-18 as well as resnet-50 so comment the library and model accordingly.
 #Libraries
 import torch
 import torch.nn as nn

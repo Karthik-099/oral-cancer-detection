@@ -1,3 +1,5 @@
+#This is the file which has the metrices for blur as well as the removal of reflection.
+
 import pandas as pd
 import os
 from pathlib import Path

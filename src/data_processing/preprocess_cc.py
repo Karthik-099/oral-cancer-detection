@@ -124,7 +124,7 @@ for pid in patient_ids:
         print(f"Directory {raw_patient_dir} does not exist, skipping.")
         continue
     
-    # Debug: List all files in the directory
+    
     all_files = list(Path(raw_patient_dir).glob('*'))
     print(f"All files in {raw_patient_dir}: {[f.name for f in all_files]}")
     

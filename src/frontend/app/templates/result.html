@@ -1,41 +1,36 @@
-<!-- templates/result.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prediction Result</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background-color: #f4f4f4;
-            padding: 20px;
-        }
-        h1 {
-            color: #333;
-        }
-        .result {
-            margin-top: 20px;
-        }
-        img {
-            max-width: 300px;
-            margin: 10px;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        h1 { color: #333; }
+        p { font-size: 18px; }
+        img { max-width: 512px; margin: 10px; }
+        .container { display: flex; justify-content: center; flex-wrap: wrap; }
+        .image-box { margin: 20px; }
     </style>
 </head>
 <body>
     <h1>Prediction Result</h1>
-    <div class="result">
-        <p><strong>Classification:</strong> {{ classification }}</p>
-        <p><strong>Probability:</strong> {{ probability | round(2) }}</p>
-        <h3>Uploaded Image:</h3>
-        <img src="data:image/png;base64,{{ image_base64 }}" alt="Uploaded Image">
+    <p>Classification: {{ classification }}</p>
+    <p>Probability: {{ '%.2f' % (probability * 100) }}%</p>
+    <div class="container">
+        <div class="image-box">
+            <h3>Original Image</h3>
+            <img src="data:image/png;base64,{{ image_base64 }}" alt="Original Image">
+        </div>
+        <div class="image-box">
+            <h3>SHAP Explanation (Suspicious Class)</h3>
+            <img src="data:image/png;base64,{{ shap_base64 }}" alt="SHAP Explanation">
+        </div>
         {% if mask_base64 %}
-            <h3>Segmentation Mask (Lesion Regions):</h3>
+        <div class="image-box">
+            <h3>Segmentation Mask</h3>
             <img src="data:image/png;base64,{{ mask_base64 }}" alt="Segmentation Mask">
+        </div>
         {% endif %}
-        <p><a href="/">Upload Another Image</a></p>
     </div>
+    <a href="/">Upload Another Image</a>
 </body>
 </html>

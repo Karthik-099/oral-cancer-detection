@@ -226,18 +226,6 @@ for pid in patient_ids:
 
             data.append({
                 'image_path': str(img_file),
-                'label': patient_metadata['Suspicion'],  # Updated column name
-                'patient_id': pid,
-                'risk': patient_metadata['Risk'],
-                'gender': patient_metadata['Gender'],
-                'study_setting': patient_metadata['Study setting'],
-                'cigarette_bidi': patient_metadata['Cigarette/Bidi'],
-                'smokeless_tobacco': patient_metadata['Smokeless tobacco'],
-                'areca_nut': patient_metadata['Areca nut'],
-                'alcohol': patient_metadata['Alcohol'],
-                'able_to_open_mouth': patient_metadata['Able to open mouth'],
-                'lesion_patch': patient_metadata['Lesion/patch'],
-                'blur_score': blur_score
             })
 
             total_images_processed += 1

@@ -1,443 +1,557 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-import torchvision.transforms as transforms
-from torchvision.models import efficientnet_b3, EfficientNet_B3_Weights
-import pandas as pd
-from PIL import Image
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-import matplotlib.pyplot as plt
-import seaborn as sns
+from torchvision import transforms
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
+import timm
 import os
 import numpy as np
-from lime import lime_image
-from skimage.segmentation import slic, mark_boundaries
-import cv2
+from tqdm import tqdm
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+import matplotlib.pyplot as plt
+import seaborn as sns
+from collections import Counter
+import pandas as pd
+from PIL import Image
 import warnings
+import json
 import time
-
+from datetime import datetime
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import cv2
+import random
 warnings.filterwarnings('ignore')
 
-# Enhanced Configuration
-CONFIG = {
-    'DATA_DIR': '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original',
-    'CSV_PATH': '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/processed_labels.csv',
-    'MODEL_SAVE_PATH': 'models/best_efficientnet_oral_cancer.pth',
-    'RESULTS_DIR': 'results',
-    'TRAIN_CSV_PATH': 'data/train_split.csv',
-    'TEST_CSV_PATH': 'data/test_split.csv',
-    'BATCH_SIZE': 16,
-    'EPOCHS': 15,
-    'LEARNING_RATE': 0.001,
-    'NUM_CLASSES': 2,
-    'IMAGE_SIZE': 224,
-    'DEVICE': torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-}
+# Set seeds for reproducibility
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+set_seed(42)
+
+# Improved Configuration
+class Config:
+    # Device setup
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    # Improved Hyperparameters
+    BATCH_SIZE = 16  # Increased for more stable gradients
+    LEARNING_RATE = 0.0001  # Slightly higher initial LR
+    NUM_EPOCHS = 100  # More epochs with proper early stopping
+    IMAGE_SIZE = 384  # Balanced size for EfficientNet-B4
+    WEIGHT_DECAY = 1e-4  # Standard weight decay
+    PATIENCE = 20  # More patience for convergence
+    DROPOUT_RATE = 0.3  # Reduced dropout
+    LABEL_SMOOTHING = 0.05  # Reduced label smoothing
+    
+    # Simplified training settings (removed complex augmentations initially)
+    WARMUP_EPOCHS = 10
+    GRADIENT_CLIPPING = 1.0
+    
+    # Paths - UPDATE THESE
+    DATA_DIR = "/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/bm"
+    CSV_PATH = "/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/processed_labels.csv"
+    MODEL_SAVE_PATH = "/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/models/improved_efficientnet_b4_oral_cancer.pth"
+    RESULTS_DIR = "/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/results"
+    
+    # Cross-validation
+    N_FOLDS = 5
+    CURRENT_FOLD = 0
+    TEST_SIZE = 0.15
+    RANDOM_STATE = 42
+
+config = Config()
+
+# Print device info
+print(f"🔧 Using device: {config.device}")
+if torch.cuda.is_available():
+    print(f"   GPU: {torch.cuda.get_device_name(0)}")
+    print(f"   CUDA Version: {torch.version.cuda}")
 
 # Create directories
-os.makedirs(os.path.dirname(CONFIG['TRAIN_CSV_PATH']), exist_ok=True)
-os.makedirs('models', exist_ok=True)
-os.makedirs(CONFIG['RESULTS_DIR'], exist_ok=True)
+os.makedirs(os.path.dirname(config.MODEL_SAVE_PATH), exist_ok=True)
+os.makedirs(config.RESULTS_DIR, exist_ok=True)
 
-class OralCancerDataset(Dataset):
-    def __init__(self, df, data_dir, transform=None):
-        self.df = df.reset_index(drop=True)
-        self.data_dir = data_dir
+# Improved Data Augmentation - Start Simple
+def get_improved_transforms():
+    train_transform = A.Compose([
+        A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
+        # Basic augmentations first
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.3),
+        A.RandomRotate90(p=0.3),
+        # Color augmentations
+        A.RandomBrightnessContrast(
+            brightness_limit=0.2, 
+            contrast_limit=0.2, 
+            p=0.5
+        ),
+        A.HueSaturationValue(
+            hue_shift_limit=10, 
+            sat_shift_limit=20, 
+            val_shift_limit=10, 
+            p=0.3
+        ),
+        # Geometric augmentations
+        A.ShiftScaleRotate(
+            shift_limit=0.05, 
+            scale_limit=0.1, 
+            rotate_limit=15, 
+            p=0.3
+        ),
+        # Noise and blur (mild)
+        A.OneOf([
+            A.GaussianBlur(blur_limit=3, p=1.0),
+            A.GaussNoise(var_limit=(10.0, 50.0), p=1.0),
+        ], p=0.2),
+        # Normalization
+        A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ToTensorV2(),
+    ])
+
+    val_transform = A.Compose([
+        A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
+        A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ToTensorV2(),
+    ])
+    
+    return train_transform, val_transform
+
+# Improved Dataset with better error handling
+class ImprovedOralCancerDataset(Dataset):
+    def __init__(self, root_dir, csv_path, indices=None, transform=None):
+        self.df = pd.read_csv(csv_path)
+        if indices is not None:
+            self.df = self.df.iloc[indices].reset_index(drop=True)
+        self.root_dir = root_dir
         self.transform = transform
+        
+        # Verify CSV structure
+        required_cols = {'patient_id', 'image_path', 'label'}
+        missing_cols = required_cols - set(self.df.columns)
+        if missing_cols:
+            raise ValueError(f"CSV missing required columns: {missing_cols}")
+            
+        # Verify labels are 0 and 1
+        unique_labels = set(self.df['label'].unique())
+        if not unique_labels.issubset({0, 1}):
+            raise ValueError(f"Labels must be 0 or 1, found: {unique_labels}")
+        
+        # Verify images exist and filter out missing ones
+        self._verify_images()
+            
+        print(f"📊 Dataset loaded: {len(self.df)} samples")
+        print(f"   Suspicious (1): {(self.df['label'] == 1).sum()} samples")
+        print(f"   Non-suspicious (0): {(self.df['label'] == 0).sum()} samples")
+
+    def _verify_images(self):
+        """Verify that images exist and filter out missing ones"""
+        valid_indices = []
+        missing_count = 0
+        
+        print("🔍 Verifying image paths...")
+        for idx, row in tqdm(self.df.iterrows(), total=len(self.df), desc="Checking images"):
+            img_path = self._get_image_path(row)
+            if os.path.exists(img_path):
+                valid_indices.append(idx)
+            else:
+                missing_count += 1
+                if missing_count <= 5:  # Show first 5 missing files
+                    print(f"❌ Missing: {img_path}")
+        
+        if missing_count > 0:
+            print(f"⚠️  Found {missing_count} missing images, filtering them out")
+            self.df = self.df.iloc[valid_indices].reset_index(drop=True)
+    
+    def _get_image_path(self, row):
+        """Get the correct image path"""
+        image_path = str(row['image_path'])
+        
+        # If image_name contains full path, use it directly
+        if os.path.isabs(image_path) and os.path.exists(image_path):
+            return image_path
+        else:
+            # Otherwise, construct path using root_dir and patient_id
+            patient_id = str(row['patient_id'])
+            image_filename = os.path.basename(image_path)
+            return os.path.join(self.root_dir, patient_id, image_filename)
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
-        img_name = self.df.iloc[idx]['image_path']
-        label = int(self.df.iloc[idx]['label'])
-        img_path = os.path.join(self.data_dir, img_name)
+        row = self.df.iloc[idx]
+        img_path = self._get_image_path(row)
         
         try:
-            image = Image.open(img_path).convert('RGB')
-        except Exception as e:
-            print(f"Error loading image {img_path}: {e}")
-            image = Image.new('RGB', (CONFIG['IMAGE_SIZE'], CONFIG['IMAGE_SIZE']), color=(128, 128, 128))
-        
-        if self.transform:
-            image = self.transform(image)
-        
-        return image, label, img_path
-
-class EnhancedEfficientNet(nn.Module):
-    def __init__(self, num_classes=2, dropout_rate=0.4):
-        super(EnhancedEfficientNet, self).__init__()
-        
-        self.backbone = efficientnet_b3(weights=EfficientNet_B3_Weights.IMAGENET1K_V1)
-        in_features = self.backbone.classifier[1].in_features
-        
-        # Enhanced classifier with better regularization
-        self.backbone.classifier = nn.Sequential(
-            nn.Dropout(dropout_rate),
-            nn.Linear(in_features, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout_rate * 0.6),
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout_rate * 0.4),
-            nn.Linear(256, num_classes)
-        )
-    
-    def forward(self, x):
-        return self.backbone(x)
-
-def get_transforms():
-    train_transform = transforms.Compose([
-        transforms.Resize((CONFIG['IMAGE_SIZE'], CONFIG['IMAGE_SIZE'])),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomRotation(degrees=10),
-        transforms.ColorJitter(brightness=0.15, contrast=0.15, saturation=0.15),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    
-    val_transform = transforms.Compose([
-        transforms.Resize((CONFIG['IMAGE_SIZE'], CONFIG['IMAGE_SIZE'])),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    
-    return train_transform, val_transform
-
-def detect_mouth_region(image):
-    """Detect and mask the mouth region using color-based segmentation"""
-    img_array = np.array(image)
-    
-    # Convert to HSV for better color segmentation
-    hsv = cv2.cvtColor(img_array, cv2.COLOR_RGB2HSV)
-    
-    # Define range for pink/red colors (mouth interior)
-    lower_red1 = np.array([0, 50, 50])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 50, 50])
-    upper_red2 = np.array([180, 255, 255])
-    
-    # Create masks for mouth region
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask = mask1 + mask2
-    
-    # Morphological operations to clean up the mask
-    kernel = np.ones((5,5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    
-    return mask > 0
-
-class EnhancedLIMEExplainer:
-    def __init__(self, model, device):
-        self.model = model
-        self.device = device
-        self.mean = np.array([0.485, 0.456, 0.406])
-        self.std = np.array([0.229, 0.224, 0.225])
-        self.class_names = ['Normal', 'Cancer']
-    
-    def preprocess_image(self, image):
-        if image.max() > 1.0:
-            image = image / 255.0
-        normalized = (image - self.mean) / self.std
-        tensor = torch.FloatTensor(normalized).permute(2, 0, 1).unsqueeze(0)
-        return tensor.to(self.device)
-    
-    def predict_fn(self, images):
-        self.model.eval()
-        predictions = []
-        
-        with torch.no_grad():
-            for img in images:
-                tensor = self.preprocess_image(img)
-                output = self.model(tensor)
-                prob = torch.nn.functional.softmax(output, dim=1)
-                predictions.append(prob.cpu().numpy()[0])
-        
-        return np.array(predictions)
-    
-    def enhanced_segmentation(self, image):
-        """Enhanced segmentation focusing on mouth region"""
-        # Detect mouth region
-        mouth_mask = detect_mouth_region(Image.fromarray(image.astype(np.uint8)))
-        
-        # Use SLIC with more segments for better precision
-        segments = slic(image, n_segments=150, compactness=20, start_label=1, 
-                       mask=mouth_mask, enforce_connectivity=True)
-        
-        return segments
-    
-    def explain_image_with_annotations(self, image_path, num_samples=1500):
-        original_image = Image.open(image_path).convert('RGB')
-        resized_image = original_image.resize((CONFIG['IMAGE_SIZE'], CONFIG['IMAGE_SIZE']))
-        img_array = np.array(resized_image)
-        
-        # Get model prediction
-        img_tensor = self.preprocess_image(img_array)
-        with torch.no_grad():
-            output = self.model(img_tensor)
-            probs = torch.nn.functional.softmax(output, dim=1)
-            predicted_class = torch.argmax(probs, dim=1).item()
-            confidence = probs.max().item()
-        
-        # Generate LIME explanation with enhanced segmentation
-        explainer = lime_image.LimeImageExplainer()
-        explanation = explainer.explain_instance(
-            img_array,
-            self.predict_fn,
-            top_labels=2,
-            hide_color=0,
-            num_samples=num_samples,
-            segmentation_fn=self.enhanced_segmentation
-        )
-        
-        return explanation, resized_image, predicted_class, confidence
-
-def create_annotated_lime_visualization(model, image_path, save_path=None):
-    """Create LIME visualization with superpixel annotations"""
-    explainer = EnhancedLIMEExplainer(model, CONFIG['DEVICE'])
-    explanation, resized_image, pred_class, confidence = explainer.explain_image_with_annotations(image_path)
-    
-    # Get explanation components
-    temp_pos, mask_pos = explanation.get_image_and_mask(
-        label=pred_class, positive_only=True, num_features=15, hide_rest=False
-    )
-    
-    # Get segments
-    segments = explainer.enhanced_segmentation(np.array(resized_image))
-    
-    # Create annotated version with superpixel numbers
-    annotated_image = np.array(resized_image).copy()
-    
-    # Get feature importance
-    feature_importance = explanation.local_exp[pred_class]
-    important_segments = {f[0]: f[1] for f in feature_importance[:10]}
-    
-    # Annotate important segments
-    for segment_id, importance in important_segments.items():
-        if abs(importance) > 0.01:  # Only annotate significant segments
-            mask = segments == segment_id
-            if np.any(mask):
-                # Find centroid of the segment
-                y_coords, x_coords = np.where(mask)
-                centroid_y, centroid_x = int(np.mean(y_coords)), int(np.mean(x_coords))
-                
-                # Choose color based on importance
-                color = (0, 255, 0) if importance > 0 else (255, 0, 0)
-                
-                # Draw annotation
-                cv2.putText(annotated_image, f'{segment_id}', 
-                           (centroid_x-10, centroid_y+5), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
-                cv2.circle(annotated_image, (centroid_x, centroid_y), 3, color, -1)
-    
-    # Create visualization
-    fig, axes = plt.subplots(2, 3, figsize=(20, 14))
-    
-    # Original Image
-    axes[0, 0].imshow(resized_image)
-    axes[0, 0].set_title(f'Original Image\n{os.path.basename(image_path)}', fontweight='bold')
-    axes[0, 0].axis('off')
-    
-    # Prediction
-    axes[0, 1].imshow(resized_image)
-    color = 'green' if pred_class == 0 else 'red'
-    axes[0, 1].set_title(f'Prediction: {explainer.class_names[pred_class]}\nConfidence: {confidence:.3f}', 
-                        fontweight='bold', color=color)
-    axes[0, 1].axis('off')
-    
-    # Annotated superpixels
-    axes[0, 2].imshow(annotated_image)
-    axes[0, 2].set_title('Annotated Superpixels\n(Numbers show segment IDs)', fontweight='bold')
-    axes[0, 2].axis('off')
-    
-    # Positive evidence
-    axes[1, 0].imshow(mark_boundaries(temp_pos / 255.0, mask_pos))
-    axes[1, 0].set_title('Positive Evidence\n(Cancer Supporting Features)', fontweight='bold')
-    axes[1, 0].axis('off')
-    
-    # Segment boundaries
-    axes[1, 1].imshow(mark_boundaries(np.array(resized_image) / 255.0, segments))
-    axes[1, 1].set_title('All Segments\n(Superpixel Boundaries)', fontweight='bold')
-    axes[1, 1].axis('off')
-    
-    # Feature importance
-    feature_importance.sort(key=lambda x: abs(x[1]), reverse=True)
-    top_features = feature_importance[:10]
-    
-    segments_ids = [f'Segment {f[0]}' for f in top_features]
-    importances = [f[1] for f in top_features]
-    colors = ['green' if imp > 0 else 'red' for imp in importances]
-    
-    y_pos = np.arange(len(segments_ids))
-    bars = axes[1, 2].barh(y_pos, importances, color=colors, alpha=0.7)
-    axes[1, 2].set_yticks(y_pos)
-    axes[1, 2].set_yticklabels(segments_ids)
-    axes[1, 2].set_xlabel('Importance Score')
-    axes[1, 2].set_title('Segment Contribution\n(Match with annotations)', fontweight='bold')
-    axes[1, 2].grid(True, alpha=0.3)
-    axes[1, 2].invert_yaxis()
-    
-    # Add value labels on bars
-    for i, bar in enumerate(bars):
-        width = bar.get_width()
-        axes[1, 2].text(width/2, bar.get_y() + bar.get_height()/2, 
-                       f'{width:.3f}', ha='center', va='center', fontweight='bold')
-    
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Enhanced LIME visualization saved: {save_path}")
-    
-    plt.show()
-    
-    return {
-        'prediction': pred_class,
-        'confidence': confidence,
-        'class_name': explainer.class_names[pred_class],
-        'top_segments': important_segments
-    }
-
-def train_model(model, train_loader, val_loader, device, epochs=15):
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=CONFIG['LEARNING_RATE'], weight_decay=1e-4)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-    
-    best_acc = 0.0
-    train_accs = []
-    val_accs = []
-    
-    print(f"Starting training on {device}")
-    print(f"Training samples: {len(train_loader.dataset)}, Validation: {len(val_loader.dataset)}")
-    print("-" * 60)
-    
-    for epoch in range(epochs):
-        # Training phase
-        model.train()
-        train_correct = 0
-        train_total = 0
-        
-        for images, labels, _ in train_loader:
-            images, labels = images.to(device), labels.to(device)
+            # Load image with OpenCV
+            image = cv2.imread(img_path)
+            if image is None:
+                # Try PIL as fallback
+                image = Image.open(img_path).convert('RGB')
+                image = np.array(image)
+            else:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-            optimizer.zero_grad()
+            label = int(row['label'])
+            
+            if self.transform:
+                augmented = self.transform(image=image)
+                image = augmented['image']
+                
+            return image, label
+            
+        except Exception as e:
+            print(f"❌ Error loading {img_path}: {e}")
+            # Create a dummy image instead of failing
+            dummy_image = np.zeros((config.IMAGE_SIZE, config.IMAGE_SIZE, 3), dtype=np.uint8)
+            if self.transform:
+                augmented = self.transform(image=dummy_image)
+                dummy_image = augmented['image']
+            else:
+                dummy_image = torch.zeros(3, config.IMAGE_SIZE, config.IMAGE_SIZE)
+            return dummy_image, 0
+
+# Alternative: Simple approach using timm's built-in classifier modification
+class ImprovedEfficientNetClassifier(nn.Module):
+    def __init__(self, num_classes=2, dropout_rate=0.3):
+        super().__init__()
+        # Create model with correct number of classes directly
+        self.model = timm.create_model(
+            'efficientnet_b4', 
+            pretrained=True, 
+            num_classes=num_classes,
+            drop_rate=dropout_rate
+        )
+        
+        print(f"🔧 Model created with {num_classes} output classes")
+        
+    def forward(self, x):
+        return self.model(x)
+
+# Simplified training function
+def train_epoch_simple(model, train_loader, criterion, optimizer, epoch):
+    """Simplified training without complex augmentations"""
+    model.train()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    
+    pbar = tqdm(train_loader, desc=f'Training Epoch {epoch}')
+    for batch_idx, (images, labels) in enumerate(pbar):
+        images, labels = images.to(config.device), labels.to(config.device)
+        
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        
+        loss.backward()
+        
+        # Gradient clipping
+        torch.nn.utils.clip_grad_norm_(model.parameters(), config.GRADIENT_CLIPPING)
+        
+        optimizer.step()
+        
+        running_loss += loss.item()
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+        
+        if batch_idx % 10 == 0:  # Update less frequently
+            pbar.set_postfix({
+                'Loss': f'{loss.item():.4f}',
+                'Acc': f'{100 * correct / total:.2f}%'
+            })
+    
+    epoch_loss = running_loss / len(train_loader)
+    epoch_acc = 100 * correct / total
+    
+    return epoch_loss, epoch_acc
+
+def validate_epoch_simple(model, val_loader, criterion):
+    """Simplified validation"""
+    model.eval()
+    running_loss = 0.0
+    correct = 0
+    total = 0
+    all_predicted = []
+    all_labels = []
+    all_probs = []
+    
+    with torch.no_grad():
+        pbar = tqdm(val_loader, desc='Validation')
+        for images, labels in pbar:
+            images, labels = images.to(config.device), labels.to(config.device)
+            
             outputs = model(images)
             loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
             
-            _, predicted = torch.max(outputs.data, 1)
-            train_total += labels.size(0)
-            train_correct += (predicted == labels).sum().item()
-        
-        # Validation phase
-        model.eval()
-        val_correct = 0
-        val_total = 0
-        
-        with torch.no_grad():
-            for images, labels, _ in val_loader:
-                images, labels = images.to(device), labels.to(device)
-                outputs = model(images)
-                _, predicted = torch.max(outputs, 1)
-                val_total += labels.size(0)
-                val_correct += (predicted == labels).sum().item()
-        
-        train_acc = 100 * train_correct / train_total
-        val_acc = 100 * val_correct / val_total
-        
-        train_accs.append(train_acc)
-        val_accs.append(val_acc)
-        
-        scheduler.step()
-        
-        print(f'Epoch [{epoch+1}/{epochs}] Train Acc: {train_acc:.2f}%, Val Acc: {val_acc:.2f}%')
-        
-        # Save best model
-        if val_acc > best_acc:
-            best_acc = val_acc
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'best_acc': best_acc,
-            }, CONFIG['MODEL_SAVE_PATH'])
-            print(f'✅ New best model saved! Accuracy: {best_acc:.2f}%')
+            running_loss += loss.item()
+            probs = torch.softmax(outputs, dim=1)
+            _, predicted = torch.max(outputs, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+            
+            all_predicted.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+            all_probs.extend(probs.cpu().numpy())
+            
+            pbar.set_postfix({
+                'Loss': f'{loss.item():.4f}',
+                'Acc': f'{100 * correct / total:.2f}%'
+            })
     
-    print(f"\n FINAL BEST MODEL ACCURACY: {best_acc:.2f}%")
-    return best_acc
+    epoch_loss = running_loss / len(val_loader)
+    epoch_acc = 100 * correct / total
+    
+    # Calculate AUC if we have both classes
+    try:
+        auc_score = roc_auc_score(all_labels, np.array(all_probs)[:, 1])
+    except:
+        auc_score = 0.5  # If we can't calculate AUC, use 0.5
+    
+    return epoch_loss, epoch_acc, auc_score, all_predicted, all_labels
+
+# Improved learning rate scheduler
+class WarmupCosineScheduler:
+    def __init__(self, optimizer, warmup_epochs, total_epochs, min_lr=1e-7):
+        self.optimizer = optimizer
+        self.warmup_epochs = warmup_epochs
+        self.total_epochs = total_epochs
+        self.min_lr = min_lr
+        self.base_lr = optimizer.param_groups[0]['lr']
+        self.current_epoch = 0
+    
+    def step(self):
+        if self.current_epoch < self.warmup_epochs:
+            # Linear warmup
+            lr = self.base_lr * (self.current_epoch + 1) / self.warmup_epochs
+        else:
+            # Cosine annealing
+            progress = (self.current_epoch - self.warmup_epochs) / (self.total_epochs - self.warmup_epochs)
+            lr = self.min_lr + (self.base_lr - self.min_lr) * 0.5 * (1 + np.cos(np.pi * progress))
+        
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
+        
+        self.current_epoch += 1
+
+# Improved training with K-fold
+def train_with_improved_kfold():
+    """Improved K-fold training"""
+    # Load data
+    df = pd.read_csv(config.CSV_PATH)
+    
+    # Check class distribution
+    class_counts = df['label'].value_counts().sort_index()
+    print(f"📊 Overall class distribution:")
+    for label, count in class_counts.items():
+        print(f"   Class {label}: {count} samples ({count/len(df)*100:.1f}%)")
+    
+    # Prepare for cross-validation
+    kfold = StratifiedKFold(n_splits=config.N_FOLDS, shuffle=True, random_state=config.RANDOM_STATE)
+    
+    fold_results = []
+    
+    for fold, (train_idx, val_idx) in enumerate(kfold.split(df, df['label'])):
+        print(f"\n🔄 Training Fold {fold + 1}/{config.N_FOLDS}")
+        print("=" * 60)
+        
+        config.CURRENT_FOLD = fold
+        
+        # Create data loaders
+        train_transform, val_transform = get_improved_transforms()
+        
+        train_dataset = ImprovedOralCancerDataset(config.DATA_DIR, config.CSV_PATH, train_idx, train_transform)
+        val_dataset = ImprovedOralCancerDataset(config.DATA_DIR, config.CSV_PATH, val_idx, val_transform)
+        
+        # Skip fold if dataset is empty
+        if len(train_dataset) == 0 or len(val_dataset) == 0:
+            print(f"⚠️ Skipping fold {fold} due to empty dataset")
+            continue
+        
+        # Calculate class weights more carefully
+        train_labels = [train_dataset[i][1] for i in range(len(train_dataset))]
+        class_counts = Counter(train_labels)
+        
+        # Ensure we have both classes
+        if len(class_counts) < 2:
+            print(f"⚠️ Skipping fold {fold} due to missing class")
+            continue
+        
+        total_samples = len(train_labels)
+        class_weights = {
+            0: total_samples / (2 * class_counts[0]) if class_counts[0] > 0 else 1.0,
+            1: total_samples / (2 * class_counts[1]) if class_counts[1] > 0 else 1.0
+        }
+        
+        print(f"📊 Fold {fold + 1} class distribution:")
+        print(f"   Train - Class 0: {class_counts[0]}, Class 1: {class_counts[1]}")
+        print(f"   Weights - Class 0: {class_weights[0]:.3f}, Class 1: {class_weights[1]:.3f}")
+        
+        # Create data loaders
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=config.BATCH_SIZE,
+            shuffle=True,
+            num_workers=2,  # Reduced for stability
+            pin_memory=True if config.device.type == 'cuda' else False,
+            drop_last=True  # Ensure consistent batch sizes
+        )
+        
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=config.BATCH_SIZE,
+            shuffle=False,
+            num_workers=2,
+            pin_memory=True if config.device.type == 'cuda' else False
+        )
+        
+        # Initialize model
+        model = ImprovedEfficientNetClassifier(num_classes=2, dropout_rate=config.DROPOUT_RATE).to(config.device)
+        
+        # Loss function and optimizer
+        class_weights_tensor = torch.tensor([class_weights[0], class_weights[1]]).to(config.device)
+        criterion = nn.CrossEntropyLoss(weight=class_weights_tensor, label_smoothing=config.LABEL_SMOOTHING)
+        
+        optimizer = optim.AdamW(
+            model.parameters(), 
+            lr=config.LEARNING_RATE, 
+            weight_decay=config.WEIGHT_DECAY,
+            betas=(0.9, 0.999)
+        )
+        
+        # Improved scheduler
+        scheduler = WarmupCosineScheduler(optimizer, config.WARMUP_EPOCHS, config.NUM_EPOCHS)
+        
+        # Training loop
+        best_val_acc = 0.0
+        best_auc = 0.0
+        patience_counter = 0
+        
+        train_losses, val_losses = [], []
+        train_accs, val_accs = [], []
+        auc_scores = []
+        
+        for epoch in range(config.NUM_EPOCHS):
+            # Update learning rate
+            scheduler.step()
+            current_lr = optimizer.param_groups[0]['lr']
+            
+            # Train
+            train_loss, train_acc = train_epoch_simple(model, train_loader, criterion, optimizer, epoch)
+            
+            # Validate
+            val_loss, val_acc, auc_score, val_pred, val_true = validate_epoch_simple(model, val_loader, criterion)
+            
+            # Store metrics
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
+            train_accs.append(train_acc)
+            val_accs.append(val_acc)
+            auc_scores.append(auc_score)
+            
+            print(f"\nEpoch {epoch+1}/{config.NUM_EPOCHS} (LR: {current_lr:.6f})")
+            print(f"Train - Loss: {train_loss:.4f}, Acc: {train_acc:.2f}%")
+            print(f"Val - Loss: {val_loss:.4f}, Acc: {val_acc:.2f}%, AUC: {auc_score:.4f}")
+            
+            # Save best model based on AUC (more reliable for imbalanced data)
+            if auc_score > best_auc:
+                best_val_acc = val_acc
+                best_auc = auc_score
+                patience_counter = 0
+                
+                # Save model
+                model_path = config.MODEL_SAVE_PATH.replace('.pth', f'_fold_{fold}.pth')
+                torch.save({
+                    'fold': fold,
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'best_val_acc': best_val_acc,
+                    'best_auc': best_auc,
+                    'config': config.__dict__
+                }, model_path)
+                
+                print(f" New best model saved! Val Acc: {best_val_acc:.2f}%, AUC: {best_auc:.4f}")
+            else:
+                patience_counter += 1
+                print(f"⏳ Patience: {patience_counter}/{config.PATIENCE}")
+            
+            # Early stopping
+            if patience_counter >= config.PATIENCE:
+                print(f" Early stopping triggered after {epoch+1} epochs")
+                break
+        
+        fold_results.append({
+            'fold': fold,
+            'best_val_acc': best_val_acc,
+            'best_auc': best_auc,
+            'train_losses': train_losses,
+            'val_losses': val_losses,
+            'train_accs': train_accs,
+            'val_accs': val_accs,
+            'auc_scores': auc_scores
+        })
+        
+        print(f"\n Fold {fold + 1} Results:")
+        print(f"   Best Val Acc: {best_val_acc:.2f}%")
+        print(f"   Best AUC: {best_auc:.4f}")
+    
+    # Calculate average performance
+    if fold_results:
+        avg_acc = np.mean([result['best_val_acc'] for result in fold_results])
+        avg_auc = np.mean([result['best_auc'] for result in fold_results])
+        std_acc = np.std([result['best_val_acc'] for result in fold_results])
+        std_auc = np.std([result['best_auc'] for result in fold_results])
+        
+        print(f"\n📊 Cross-Validation Results:")
+        print(f"   Average Validation Accuracy: {avg_acc:.2f}% ± {std_acc:.2f}%")
+        print(f"   Average AUC: {avg_auc:.4f} ± {std_auc:.4f}")
+        
+        # Save results
+        with open(os.path.join(config.RESULTS_DIR, 'improved_kfold_results.json'), 'w') as f:
+            json.dump(fold_results, f, indent=2)
+    else:
+        print("❌ No successful folds completed!")
+    
+    return fold_results
 
 def main():
-    print(" Enhanced EfficientNet Oral Cancer Detection with Annotated LIME")
-    print(f"Device: {CONFIG['DEVICE']}")
-    print("-" * 60)
+    """Main training function"""
+    print("🚀 Starting Improved EfficientNet-B4 Oral Cancer Detection Training")
+    print(f"📁 Data directory: {config.DATA_DIR}")
+    print(f"📄 CSV file: {config.CSV_PATH}")
     
-    if not os.path.exists(CONFIG['CSV_PATH']):
-        print(" CSV file not found!")
-        return
+    # Verify paths exist
+    if not os.path.exists(config.DATA_DIR):
+        print(f"❌ Data directory does not exist: {config.DATA_DIR}")
+        return None
     
-    # Load and split data
-    df = pd.read_csv(CONFIG['CSV_PATH'])
-    print(f" Loaded {len(df)} samples")
-    print(f"Class distribution:\n{df['label'].value_counts()}")
+    if not os.path.exists(config.CSV_PATH):
+        print(f"❌ CSV file does not exist: {config.CSV_PATH}")
+        return None
     
-    # Split and save train/test CSVs
-    train_df, val_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['label'])
-    train_df.to_csv(CONFIG['TRAIN_CSV_PATH'], index=False)
-    val_df.to_csv(CONFIG['TEST_CSV_PATH'], index=False)
-    print(f" Train/test splits saved to {CONFIG['TRAIN_CSV_PATH']} and {CONFIG['TEST_CSV_PATH']}")
+    # Train with improved K-fold cross-validation
+    results = train_with_improved_kfold()
     
-    # Get transforms and create datasets
-    train_transform, val_transform = get_transforms()
-    train_dataset = OralCancerDataset(train_df, CONFIG['DATA_DIR'], transform=train_transform)
-    val_dataset = OralCancerDataset(val_df, CONFIG['DATA_DIR'], transform=val_transform)
-    
-    train_loader = DataLoader(train_dataset, batch_size=CONFIG['BATCH_SIZE'], shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=CONFIG['BATCH_SIZE'], shuffle=False, num_workers=4)
-    
-    # Initialize and train model
-    model = EnhancedEfficientNet(num_classes=CONFIG['NUM_CLASSES']).to(CONFIG['DEVICE'])
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Model parameters: {total_params:,}")
-    
-    print("\n Starting training...")
-    best_acc = train_model(model, train_loader, val_loader, CONFIG['DEVICE'], CONFIG['EPOCHS'])
-    
-    # Load best model for LIME analysis
-    if os.path.exists(CONFIG['MODEL_SAVE_PATH']):
-        checkpoint = torch.load(CONFIG['MODEL_SAVE_PATH'])
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print(" Loaded best trained model for LIME analysis")
-    
-    model.eval()
-    
-    # Select sample images for enhanced LIME analysis
-    sample_images = ['/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_15/image_1.jpeg','/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_142/image_1.jpeg','/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_166/image_2.jpeg','/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_179/image_1.jpeg','/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_210/image_1.jpeg']
-    for i in range(min(3, len(val_df))):
-        img_name = val_df.iloc[i]['image_path']
-        img_path = os.path.join(CONFIG['DATA_DIR'], img_name)
-        sample_images.append(img_path)
-    
-    # Perform enhanced LIME analysis
-    if sample_images:
-        print(f"\n🔍 Analyzing {len(sample_images)} images with Enhanced LIME...")
-        for i, img_path in enumerate(sample_images):
-            if os.path.exists(img_path):
-                print(f"Processing image {i+1}: {os.path.basename(img_path)}")
-                save_path = os.path.join(CONFIG['RESULTS_DIR'], f'enhanced_lime_analysis_{i+1}.png')
-                result = create_annotated_lime_visualization(model, img_path, save_path)
-                print(f"Result: {result['class_name']} (Confidence: {result['confidence']:.3f})")
-            else:
-                print(f"⚠️ Image not found: {img_path}")
-    
-    print(f"\n Analysis complete! Best Model Accuracy: {best_acc:.2f}%")
-    print(f" Results saved in: {CONFIG['RESULTS_DIR']}")
+    return results
 
 if __name__ == "__main__":
-    main()
+    try:
+        results = main()
+        if results:
+            print("\n✅ Training complete!")
+        else:
+            print("\n❌ Training failed!")
+    except Exception as e:
+        print(f"❌ Error during training: {e}")
+        import traceback
+        traceback.print_exc()

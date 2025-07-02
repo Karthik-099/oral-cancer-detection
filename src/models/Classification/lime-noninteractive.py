@@ -8,8 +8,6 @@ import pandas as pd
 from PIL import Image
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('tkagg')
 import seaborn as sns
 import os
 import numpy as np
@@ -18,21 +16,20 @@ from skimage.segmentation import slic, mark_boundaries
 import cv2
 import warnings
 import time
-from matplotlib.colors import LinearSegmentedColormap
 
 warnings.filterwarnings('ignore')
 
 global_val_df = None
 
 CONFIG = {
-    'DATA_DIR': '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original',
+    'DATA_DIR': '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/img',
     'CSV_PATH': '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/processed_labels.csv',
-    'MODEL_LOAD_PATH': 'models/best_efficientnet_oral_cancer.pth',  # Changed to load path
+    'MODEL_SAVE_PATH': 'models/efficientnetb4_oralcancer.pth',
     'RESULTS_DIR': 'results_final',
     'TRAIN_CSV_PATH': 'data/train_split.csv',
     'TEST_CSV_PATH': 'data/test_split.csv',
     'BATCH_SIZE': 16,
-    'EPOCHS': 10,
+    'EPOCHS': 10,  # Increased to 30
     'LEARNING_RATE': 0.001,
     'NUM_CLASSES': 2,
     'IMAGE_SIZE': 300,
@@ -126,98 +123,13 @@ def detect_mouth_region(image):
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     return mask > 0
 
-def create_gradient_overlay(image, segments, feature_importance, top_segments, is_suspicious=True):
-    """Create gradient overlay based on segment importance with yellow to red gradient"""
-    overlay = np.zeros_like(image, dtype=np.float32)
-    
-    if not top_segments:
-        return overlay
-    
-    # Get importance values for top segments only
-    top_importance_values = [abs(imp) for seg_id, imp in feature_importance if seg_id in top_segments]
-    
-    if top_importance_values:
-        min_importance = min(top_importance_values)
-        max_importance = max(top_importance_values)
-        importance_range = max_importance - min_importance if max_importance != min_importance else 1
-        
-        for segment_id, importance in feature_importance:
-            if segment_id in top_segments:
-                mask = segments == segment_id
-                if np.any(mask):
-                    # Normalize importance within the range of top segments
-                    abs_importance = abs(importance)
-                    normalized_importance = (abs_importance - min_importance) / importance_range
-                    
-                    # Create yellow to red gradient
-                    # Yellow (1,1,0) -> Orange (1,0.5,0) -> Red (1,0,0)
-                    if normalized_importance <= 0.5:
-                        # Yellow to Orange
-                        ratio = normalized_importance * 2  # 0 to 1
-                        color = np.array([1.0, 1.0 - ratio * 0.5, 0.0])  # (1,1,0) to (1,0.5,0)
-                    else:
-                        # Orange to Red
-                        ratio = (normalized_importance - 0.5) * 2  # 0 to 1
-                        color = np.array([1.0, 0.5 - ratio * 0.5, 0.0])  # (1,0.5,0) to (1,0,0)
-                    
-                    # Apply consistent opacity
-                    alpha = 0.6
-                    overlay[mask] = color * alpha
-    
-    return overlay
-
-def create_segment_boundaries_with_labels(image, segments, top_segments, feature_importance):
-    """Create segment boundaries with transparent colors and labels - only for top segments"""
-    # Create boundary image
-    boundary_image = np.array(image, dtype=np.float32) / 255.0
-    
-    # Create custom colors for boundaries (more vibrant and visible)
-    boundary_colors = [
-        (1, 0, 1),      # Magenta
-        (0, 1, 1),      # Cyan  
-        (1, 1, 0),      # Yellow
-        (0, 0, 1),      # Blue
-        (1, 0.5, 0)     # Orange
-    ]
-    
-    label_positions = []
-    
-    # Only process top segments
-    for i, (segment_id, importance) in enumerate(top_segments.items()):
-        mask = segments == segment_id
-        if np.any(mask):
-            # Create a temporary image with only this segment
-            temp_segments = np.zeros_like(segments)
-            temp_segments[mask] = 1
-            
-            # Get segment boundary with thicker, more visible lines
-            boundaries = mark_boundaries(
-                np.zeros_like(boundary_image), 
-                temp_segments, 
-                color=boundary_colors[i % len(boundary_colors)], 
-                mode='thick'
-            )
-            
-            # Apply boundary with higher opacity for better visibility
-            boundary_mask = np.any(boundaries != 0, axis=2)
-            alpha = 0.9  # Higher opacity for better visibility
-            boundary_image[boundary_mask] = (1 - alpha) * boundary_image[boundary_mask] + alpha * boundaries[boundary_mask]
-            
-            # Calculate centroid for label placement
-            y_coords, x_coords = np.where(mask)
-            if len(y_coords) > 0 and len(x_coords) > 0:
-                centroid_y, centroid_x = int(np.mean(y_coords)), int(np.mean(x_coords))
-                label_positions.append((centroid_x, centroid_y, f'S{segment_id}', boundary_colors[i % len(boundary_colors)]))
-    
-    return boundary_image, label_positions
-
 class EnhancedLIMEExplainer:
     def __init__(self, model, device):
         self.model = model
         self.device = device
         self.mean = np.array([0.485, 0.456, 0.406])
         self.std = np.array([0.229, 0.224, 0.225])
-        self.class_names = ['Non-Suspicious', 'Suspicious']
+        self.class_names = ['Normal', 'Cancer']
     
     def preprocess_image(self, image):
         if image.max() > 1.0:
@@ -279,10 +191,10 @@ class EnhancedLIMEExplainer:
                 8: 'Oral Cavity Normal',
                 9: 'Benign',
                 10: 'Other'
-            }.get(cancer_type, 'Unspecified')
+            }.get(cancer_type, 'Unknown')
         else:
             cancer_type = -1
-            cancer_type_name = 'Unspecified'
+            cancer_type_name = 'Unknown'
         
         return explanation, resized_image, predicted_class, confidence, cancer_type, cancer_type_name
 
@@ -295,173 +207,76 @@ def create_annotated_lime_visualization(model, image_path, save_path=None):
     )
     segments = explainer.enhanced_segmentation(np.array(resized_image))
     
-    # Create base annotated image
     annotated_image = np.array(resized_image).astype(np.float32) / 255.0
-    
-    # Get feature importance scores
+    boundary_mask = mark_boundaries(annotated_image, segments, color=(0, 1, 0), mode='subpixel')
+    alpha = 0.3
+    annotated_image = (1 - alpha) * annotated_image + alpha * boundary_mask
+    annotated_image = (annotated_image * 255).astype(np.uint8)
     feature_importance = explanation.local_exp[pred_class]
     
-    # Create importance dictionary for all segments
-    importance_dict = {seg_id: imp for seg_id, imp in feature_importance}
-    
-    # Get max absolute importance for normalization
-    if importance_dict:
-        max_abs_importance = max(abs(imp) for imp in importance_dict.values())
-    else:
-        max_abs_importance = 1.0
-    
-    # Create colored overlay based on contribution levels
-    colored_overlay = np.zeros_like(annotated_image)
-    
-    # Get only positive contributions for coloring
-    positive_contributions = [(seg_id, imp) for seg_id, imp in feature_importance if imp > 0]
-    
-    if positive_contributions:
-        # Get min and max positive contributions for normalization
-        positive_importances = [imp for _, imp in positive_contributions]
-        min_positive = min(positive_importances)
-        max_positive = max(positive_importances)
-        
-        # Color only positively contributing segments
-        for segment_id, importance in positive_contributions:
-            mask = segments == segment_id
-            if np.any(mask):
-                # Normalize importance from min to max positive range (0 to 1)
-                if max_positive > min_positive:
-                    normalized_importance = (importance - min_positive) / (max_positive - min_positive)
-                else:
-                    normalized_importance = 1.0
-                
-                # Create red to yellow gradient based on contribution level
-                # normalized_importance = 0 -> yellow (min contribution)
-                # normalized_importance = 1 -> red (max contribution)
-                red_component = 1.0
-                green_component = 1.0 - normalized_importance * 0.7  # From 1.0 (yellow) to 0.3 (red-ish)
-                blue_component = 0.0
-                
-                color = np.array([red_component, green_component, blue_component])
-                
-                # Apply color with transparency based on contribution strength
-                alpha = 0.3 + normalized_importance * 0.4  # Vary alpha from 0.3 to 0.7
-                colored_overlay[mask] = color * alpha
-    
-    # Blend the colored overlay with the original image
-    alpha_blend = 0.5
-    annotated_image = (1 - alpha_blend) * annotated_image + alpha_blend * colored_overlay
-    
-    # Add boundaries for all segments
-    boundary_image = np.copy(annotated_image)
-    
-    # Add boundaries for all segments in light gray
-    unique_segments = np.unique(segments)
-    for segment_id in unique_segments:
-        if segment_id == 0:  # Skip background
-            continue
-            
-        mask = segments == segment_id
-        if np.any(mask):
-            # Create boundary for this segment
-            boundaries = mark_boundaries(np.zeros_like(boundary_image), segments == segment_id, 
-                                       color=(0.7, 0.7, 0.7), mode='thick')  # Light gray boundaries
-            
-            # Apply boundary
-            boundary_mask = np.any(boundaries > 0, axis=2)
-            boundary_image[boundary_mask] = boundaries[boundary_mask]
-    
-    # Determine top contributing segments for labels and dark red boundaries
     if pred_class == 0:
         relevant_features = [(seg_id, imp) for seg_id, imp in feature_importance if imp < 0]
         relevant_features.sort(key=lambda x: x[1])
         top_features = relevant_features[:5]
-        chart_title = 'Top 5 Segments Supporting Non-suspicious\n(Match with annotations)'
+        chart_title = 'Top 5 Segments Supporting Normal\n(Match with annotations)'
         positive_evidence_title = f'Positive Evidence\n(Normal Supporting Features)'
         bar_color = 'green'
     else:
         relevant_features = [(seg_id, imp) for seg_id, imp in feature_importance if imp > 0]
         relevant_features.sort(key=lambda x: x[1], reverse=True)
         top_features = relevant_features[:5]
-        chart_title = 'Top 5 Segments Supporting suspicious\n(Match with annotations)'
+        chart_title = 'Top 5 Segments Supporting Cancer\n(Match with annotations)'
         positive_evidence_title = f'Positive Evidence\n(Cancer Supporting Features)'
         bar_color = 'red'
     
     important_segments = {seg_id: imp for seg_id, imp in top_features}
     
-    # Add dark red boundaries for top contributing segments and labels
-    label_positions = []
-    for i, (segment_id, importance) in enumerate(important_segments.items()):
+    for segment_id, _ in important_segments.items():
         mask = segments == segment_id
         if np.any(mask):
-            # Add dark red boundary for important segments
-            boundaries = mark_boundaries(np.zeros_like(boundary_image), segments == segment_id, 
-                                       color=(0.8, 0, 0), mode='thick')  # Dark red boundaries
-            
-            boundary_mask = np.any(boundaries > 0, axis=2)
-            boundary_image[boundary_mask] = boundaries[boundary_mask]
-            
-            # Calculate centroid for label placement
             y_coords, x_coords = np.where(mask)
-            if len(y_coords) > 0 and len(x_coords) > 0:
-                centroid_y, centroid_x = int(np.mean(y_coords)), int(np.mean(x_coords))
-                label_positions.append((centroid_x, centroid_y, f'S{segment_id}', (0.8, 0, 0)))
+            centroid_y, centroid_x = int(np.mean(y_coords)), int(np.mean(x_coords))
+            cv2.circle(annotated_image, (centroid_x, centroid_y), 8, (0, 255, 0, 128), -1)
     
-    # Convert back to uint8 for display
-    boundary_image = np.clip(boundary_image * 255, 0, 255).astype(np.uint8)
-    
-    # Create importance heatmap
     importance_scores = np.zeros_like(mask_pos, dtype=float)
     for region_id, score in feature_importance:
         importance_scores[mask_pos == region_id] = score
     
-    # Get true label information
     filtered_df = global_val_df[global_val_df['image_path'] == image_path]
     if not filtered_df.empty:
         true_label = filtered_df['label'].values[0]
-        true_label_name = 'Suspicious' if true_label == 1 else 'Non-suspicious'
+        true_label_name = 'Cancer' if true_label == 1 else 'Normal'
     else:
         print(f"Warning: Image path {image_path} not found in validation DataFrame.")
+        print("Validation DataFrame image paths:", global_val_df['image_path'].head().tolist())
         true_label_name = "Unknown"
         true_label = -1
     
-    # Create the visualization
     fig, axes = plt.subplots(2, 3, figsize=(20, 14))
     
-    # Original Image
     axes[0, 0].imshow(resized_image)
     axes[0, 0].set_title(f'Original Image\n{os.path.basename(image_path)}\nTrue Label: {true_label_name}', fontweight='bold')
     axes[0, 0].axis('off')
     
-    # Importance Heatmap
     im = axes[0, 1].imshow(importance_scores, cmap='RdYlBu_r')
     plt.colorbar(im, ax=axes[0, 1], fraction=0.046, pad=0.04)
-    axes[0, 1].set_title(f'Importance Heatmap\nConfidence: {confidence:.3f}\nSuspicious Type: {cancer_type_name}', fontweight='bold')
+    axes[0, 1].set_title(f'Importance Heatmap\nConfidence: {confidence:.3f}\nCancer Type: {cancer_type_name}', fontweight='bold')
     axes[0, 1].axis('off')
     
-    # Annotated image with colored segments and boundaries
-    axes[0, 2].imshow(boundary_image)
-    
-    # Add segment labels for top contributing segments
-    for x, y, label, color in label_positions:
-        axes[0, 2].text(x, y, label, fontsize=10, fontweight='bold', 
-                       color='white', ha='center', va='center',
-                       bbox=dict(boxstyle='round,pad=0.3', facecolor='black', alpha=0.7))
-    
+    axes[0, 2].imshow(annotated_image)
     color = 'green' if pred_class == 0 else 'red'
-    axes[0, 2].set_title(f'Positively Contributing Segments (Red-Yellow Gradient)\nPrediction: {explainer.class_names[pred_class]}', 
+    axes[0, 2].set_title(f'Top 5 Key Segments\nPrediction: {explainer.class_names[pred_class]}', 
                          fontweight='bold', color=color)
     axes[0, 2].axis('off')
     
-    # Positive evidence
     axes[1, 0].imshow(mark_boundaries(temp_pos / 255.0, mask_pos))
     axes[1, 0].set_title(positive_evidence_title, fontweight='bold')
     axes[1, 0].axis('off')
     
-    # All segments with boundaries (original style)
-    all_boundaries = mark_boundaries(np.array(resized_image) / 255.0, segments, color=(0, 1, 0), mode='thick')
-    axes[1, 1].imshow(all_boundaries)
+    axes[1, 1].imshow(boundary_mask)
     axes[1, 1].set_title('All Segments\n(Superpixel Boundaries)', fontweight='bold')
     axes[1, 1].axis('off')
     
-    # Bar chart for top contributing segments
     segments_ids = [f'Segment {seg_id}' for seg_id, _ in top_features]
     importances = [imp for _, imp in top_features]
     colors = [bar_color for _ in importances]
@@ -477,7 +292,6 @@ def create_annotated_lime_visualization(model, image_path, save_path=None):
     if pred_class == 0:
         axes[1, 2].invert_xaxis()
     
-    # Add value labels on bars
     for i, bar in enumerate(bars):
         width = bar.get_width()
         ha = 'right' if pred_class == 0 else 'left'
@@ -489,7 +303,7 @@ def create_annotated_lime_visualization(model, image_path, save_path=None):
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"Enhanced LIME visualization saved: {save_path}")
-    plt.close()  # Close the figure to free memory
+    plt.show()
     
     return {
         'prediction': pred_class,
@@ -501,66 +315,143 @@ def create_annotated_lime_visualization(model, image_path, save_path=None):
         'cancer_type_name': cancer_type_name
     }
 
-def load_trained_model(model_path):
-    """Load pre-trained model from path"""
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model file not found: {model_path}")
+def train_model(model, train_loader, val_loader, device, epochs=15):
+    labels = [label for _, label, _ in train_loader.dataset]
+    class_counts = np.bincount(labels)
+    class_weights = torch.tensor([1.0 / count for count in class_counts], dtype=torch.float).to(device)
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    optimizer = optim.Adam(model.parameters(), lr=CONFIG['LEARNING_RATE'], weight_decay=1e-4)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3)
     
-    model = EnhancedEfficientNet(num_classes=CONFIG['NUM_CLASSES']).to(CONFIG['DEVICE'])
+    best_acc = 0.0
+    train_accs = []
+    val_accs = []
+    patience = 5  # Early stopping patience
+    counter = 0  # Early stopping counter
     
-    try:
-        checkpoint = torch.load(model_path, map_location=CONFIG['DEVICE'])
-        if 'model_state_dict' in checkpoint:
-            model.load_state_dict(checkpoint['model_state_dict'])
-            best_acc = checkpoint.get('best_acc', 'Unknown')
-            print(f" Model loaded successfully from {model_path}")
-            print(f"   Model accuracy: {best_acc}")
-        else:
-            # Direct state dict
-            model.load_state_dict(checkpoint)
-            print(f" Model loaded successfully from {model_path}")
-    except Exception as e:
-        print(f"❌ Error loading model: {e}")
-        raise
+    print(f"Starting training on {device}")
+    print(f"Training samples: {len(train_loader.dataset)}, Validation: {len(val_loader.dataset)}")
+    print("-" * 60)
     
-    model.eval()
-    return model
+    epoch_batches = [(i, min(i + 5, epochs)) for i in range(0, epochs, 5)]
+    for batch_idx, (start_epoch, end_epoch) in enumerate(epoch_batches):
+        print(f"\nProcessing epoch batch {batch_idx + 1}: Epochs {start_epoch + 1} to {end_epoch}")
+        for epoch in range(start_epoch, end_epoch):
+            model.train()
+            train_correct = 0
+            train_total = 0
+            
+            for images, labels, _ in train_loader:
+                images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
+                
+                _, predicted = torch.max(outputs.data, 1)
+                train_total += labels.size(0)
+                train_correct += (predicted == labels).sum().item()
+            
+            model.eval()
+            val_correct = 0
+            val_total = 0
+            
+            with torch.no_grad():
+                for images, labels, _ in val_loader:
+                    images, labels = images.to(device), labels.to(device)
+                    outputs = model(images)
+                    _, predicted = torch.max(outputs, 1)
+                    val_total += labels.size(0)
+                    val_correct += (predicted == labels).sum().item()
+            
+            train_acc = 100 * train_correct / train_total
+            val_acc = 100 * val_correct / val_total
+            
+            train_accs.append(train_acc)
+            val_accs.append(val_acc)
+            
+            scheduler.step(val_acc)
+            
+            print(f'Epoch [{epoch+1}/{epochs}] Train Acc: {train_acc:.2f}%, Val Acc: {val_acc:.2f}%')
+            
+            if val_acc > best_acc:
+                best_acc = val_acc
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'best_acc': best_acc,
+                }, CONFIG['MODEL_SAVE_PATH'])
+                print(f' New best model saved! Accuracy: {best_acc:.2f}%')
+                counter = 0  # Reset counter
+            else:
+                counter += 1
+                print(f' No improvement. Early stopping counter: {counter}/{patience}')
+            
+            if counter >= patience:
+                print(f' Early stopping triggered at epoch {epoch+1}')
+                break
+        
+        if counter >= patience:
+            break
+    plt.plot(train_accs, label='Train Accuracy')
+    plt.plot(val_accs, label='Validation Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy (%)')
+    plt.title('Training and Validation Accuracy Over Epochs')
+    plt.legend()
+    plt.savefig(os.path.join(CONFIG['RESULTS_DIR'], 'accuracy_plot.png'))
+    plt.show()
+    
+    print(f"\n FINAL BEST MODEL ACCURACY: {best_acc:.2f}%")
+    return best_acc
 
 def main():
     global global_val_df
+    print(" Enhanced EfficientNet Oral Cancer Detection with Annotated LIME")
+    print(f"Device: {CONFIG['DEVICE']}")
+    print("-" * 60)
     
-    # Load CSV file
     if not os.path.exists(CONFIG['CSV_PATH']):
         print(" CSV file not found!")
         return
     
     df = pd.read_csv(CONFIG['CSV_PATH'])
-    df = df.dropna(subset=['label'])
     print(f" Loaded {len(df)} samples")
     print(f"Class distribution:\n{df['label'].value_counts()}")
     
-    # Set global validation dataframe
+    train_df, val_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['label'])
+    train_df.to_csv(CONFIG['TRAIN_CSV_PATH'], index=False)
+    val_df.to_csv(CONFIG['TEST_CSV_PATH'], index=False)
+    print(f" Train/test splits saved to {CONFIG['TRAIN_CSV_PATH']} and {CONFIG['TEST_CSV_PATH']}")
+    
     global_val_df = df
     
-    # Load pre-trained model instead of training
-    print(f"\n Loading pre-trained model from: {CONFIG['MODEL_LOAD_PATH']}")
-    try:
-        model = load_trained_model(CONFIG['MODEL_LOAD_PATH'])
-    except Exception as e:
-        print(f" Failed to load model: {e}")
-        return
+    train_transform, val_transform = get_transforms()
+    train_dataset = OralCancerDataset(train_df, CONFIG['DATA_DIR'], transform=train_transform)
+    val_dataset = OralCancerDataset(val_df, CONFIG['DATA_DIR'], transform=val_transform)
     
-    # Sample images for analysis
+    train_loader = DataLoader(train_dataset, batch_size=CONFIG['BATCH_SIZE'], shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=CONFIG['BATCH_SIZE'], shuffle=False, num_workers=4)
+    
+    model = EnhancedEfficientNet(num_classes=CONFIG['NUM_CLASSES']).to(CONFIG['DEVICE'])
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Model parameters: {total_params:,}")
+    
+    print("\n Starting training...")
+    best_acc = train_model(model, train_loader, val_loader, CONFIG['DEVICE'], CONFIG['EPOCHS'])
+    
+    if os.path.exists(CONFIG['MODEL_SAVE_PATH']):
+        checkpoint = torch.load(CONFIG['MODEL_SAVE_PATH'])
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print(" Loaded best trained model for LIME analysis")
+    
+    model.eval()
+    
     sample_images = [
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_279/image_4.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_47/image_4.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_257/image_4.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_257/image_9.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_236/image_1.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_491/image_3.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_452/image_1.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_472/image_1.jpeg',
-        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_349/image_2.jpeg'
+        '/home/user/Desktop/oral_cancer/gdc_oral_cancer_dataset/oral-cancer-detection/data/original/patient_1/image_1.jpeg',      
     ]
     
     if sample_images:
@@ -570,13 +461,14 @@ def main():
                 print(f"Processing image {i+1}: {os.path.basename(img_path)}")
                 save_path = os.path.join(CONFIG['RESULTS_DIR'], f'enhanced_lime_analysis_{i+1}.png')
                 result = create_annotated_lime_visualization(model, img_path, save_path)
-                true_label_str = "Unknown" if result['true_label'] == -1 else ('Suspicious' if result['true_label'] == 1 else 'Non-suspicious')
+                true_label_str = "Unknown" if result['true_label'] == -1 else ('Cancer' if result['true_label'] == 1 else 'Normal')
                 print(f"Result: {result['class_name']} (Confidence: {result['confidence']:.3f}), "
                       f"True Label: {true_label_str}, Cancer Type: {result['cancer_type_name']}")
             else:
                 print(f"⚠️ Image not found: {img_path}")
     
-    print(f"\n✅ Analysis complete! Results saved in: {CONFIG['RESULTS_DIR']}")
+    print(f"\n Analysis complete! Best Model Accuracy: {best_acc:.2f}%")
+    print(f" Results saved in: {CONFIG['RESULTS_DIR']}")
 
 if __name__ == '__main__':
     main()

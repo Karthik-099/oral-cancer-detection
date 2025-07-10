@@ -1,17 +1,10 @@
-import cv2
-import numpy as np
-import os
-import logging
 import time
+import os
+import numpy as np
+import cv2
+import logging
 from PIL import Image
-from config import CONFIG, RESULTS_DIR
-
-def setup_logging():
-    logging.basicConfig(
-        filename=os.path.join(RESULTS_DIR, 'debug.log'),
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
-    )
+from config import CONFIG
 
 def normalize_path(image_path):
     norm_path = image_path.lower().replace('\\', '/').strip('/')

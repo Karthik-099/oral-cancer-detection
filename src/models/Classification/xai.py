@@ -164,7 +164,7 @@ class ImprovedOralCancerDataset(Dataset):
             else:
                 missing_count += 1
                 if missing_count <= 5:  # Show first 5 missing files
-                    print(f"❌ Missing: {img_path}")
+                    print(f" Missing: {img_path}")
         
         if missing_count > 0:
             print(f"⚠️  Found {missing_count} missing images, filtering them out")

@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Admin Control Center — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .admin-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .tenant-badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .badge-Active { background: rgba(29,158,117,0.1); color: var(--success); }
+  .badge-Suspended { background: rgba(226,75,74,0.1); color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <div>
+      <h4 style="font-weight:800;margin:0">Admin Control Center</h4>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Business operations, tenant management, and license control.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openTenantModal()">
+      <i class="ti ti-plus me-2"></i>Add New Tenant
+    </button>
+  </div>
+</div>
+
+<!-- Usage Analytics -->
+<div class="row mb-5">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header bg-white">Diagnoses Volume (Last 30 Days)</div>
+      <div class="card-body">
+        <canvas id="usageChart" style="max-height:300px"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-white">Tenants by Plan</div>
+      <div class="card-body d-flex align-items-center">
+        <canvas id="planChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tenant Management -->
+<div class="card mb-5">
+  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <span>Active Tenants</span>
+    <span class="section-label">{{ tenants|length }} Total</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Hospital / Clinic</th>
+            <th>Plan</th>
+            <th>License Key</th>
+            <th>Status</th>
+            <th>Expires</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tenants %}
+          <tr>
+            <td style="font-weight:700">
+              {{ t.name }}
+              <div style="font-size:0.75rem;color:var(--text-secondary)">{{ t.contact_email }}</div>
+            </td>
+            <td><span class="badge bg-light text-primary border">{{ t.settings.plan }}</span></td>
+            <td>
+              <code style="font-size:0.7rem">{{ t.settings.license_key[:8] }}...</code>
+              <button class="btn btn-sm p-0 ms-1 text-primary" onclick="copyKey('{{ t.settings.license_key }}')"><i class="ti ti-copy"></i></button>
+            </td>
+            <td><span class="tenant-badge badge-{{ t.status }}">{{ t.status }}</span></td>
+            <td style="font-size:0.85rem">{{ t.settings.expires_at.strftime('%b %d, %Y') if t.settings.expires_at else 'Never' }}</td>
+            <td>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-light" data-bs-toggle="dropdown"><i class="ti ti-dots-vertical"></i></button>
+                <div class="dropdown-menu dropdown-menu-end">
+                  <a class="dropdown-item" href="#"><i class="ti ti-edit me-2"></i>Edit Plan</a>
+                  <a class="dropdown-item text-danger" href="#"><i class="ti ti-player-pause me-2"></i>Suspend</a>
+                  <hr class="dropdown-divider">
+                  <a class="dropdown-item" href="#"><i class="ti ti-key me-2"></i>Rotate License</a>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Feature Flags -->
+<div class="card mb-5">
+  <div class="card-header bg-white">Global Feature Flags</div>
+  <div class="card-body p-0">
+    <div class="list-group list-group-flush">
+      {% for flag in feature_flags %}
+      <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+        <div>
+          <h6 class="mb-0" style="font-weight:700">{{ flag.flag_name }}</h6>
+          <p class="mb-0 text-muted" style="font-size:0.8rem">Control availability of this feature across all cloud tenants.</p>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" {% if flag.enabled %}checked{% endif %} onclick="toggleFlag({{ flag.id }})">
+        </div>
+      </div>
+      {% endfor %}
+      <!-- Hardcoded if no DB flags yet -->
+      {% if not feature_flags %}
+      <div class="p-4 text-center text-muted">No flags configured. Toggles below are UI-only previews.</div>
+      {% for name in ['Video Consultation', 'Multi-Image Upload', 'PDF Reports', 'Active Learning', 'LIME Explanations'] %}
+      <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+        <div><h6 class="mb-0" style="font-weight:700">{{ name }}</h6></div>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked></div>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- New Tenant Modal -->
+<div class="modal fade" id="tenantModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="font-weight:800">Add New Clinical Tenant</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="tenantForm">
+          <div class="mb-3">
+            <label class="form-label">Hospital / Clinic Name</label>
+            <input type="text" class="form-control" id="t_name" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Contact Email</label>
+            <input type="email" class="form-control" id="t_email" required>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label">Plan</label>
+              <select class="form-select" id="t_plan">
+                <option value="Starter">Starter</option>
+                <option value="Clinic">Clinic</option>
+                <option value="Hospital">Hospital</option>
+                <option value="Enterprise">Enterprise</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">License (Days)</label>
+              <input type="number" class="form-control" id="t_duration" value="365">
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label">Max Doctors</label>
+              <input type="number" class="form-control" id="t_doctors" value="5">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Max Patients</label>
+              <input type="number" class="form-control" id="t_patients" value="500">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-3 mt-2">
+            <i class="ti ti-check me-2"></i>Create Tenant & License
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const tenantModal = new bootstrap.Modal(document.getElementById('tenantModal'));
+  
+  window.onload = () => {
+    initCharts();
+  };
+
+  function initCharts() {
+    const usageCtx = document.getElementById('usageChart').getContext('2d');
+    const analytics = {{ analytics|tojson }};
+    
+    new Chart(usageCtx, {
+      type: 'line',
+      data: {
+        labels: analytics.labels,
+        datasets: [{
+          label: 'Diagnoses',
+          data: analytics.counts,
+          borderColor: '#0e6db4',
+          backgroundColor: 'rgba(14,109,180,0.1)',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+      }
+    });
+
+    const planCtx = document.getElementById('planChart').getContext('2d');
+    const plans = analytics.plans;
+    new Chart(planCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(plans),
+        datasets: [{
+          data: Object.values(plans),
+          backgroundColor: ['#0e6db4', '#378ADD', '#1D9E75', '#BA7517']
+        }]
+      },
+      options: { cutout: '70%', plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+
+  function openTenantModal() { tenantModal.show(); }
+
+  document.getElementById('tenantForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('t_name').value,
+      email: document.getElementById('t_email').value,
+      plan: document.getElementById('t_plan').value,
+      duration: document.getElementById('t_duration').value,
+      max_doctors: document.getElementById('t_doctors').value,
+      max_patients: document.getElementById('t_patients').value
+    };
+    
+    const res = await fetch('/api/tenants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    if (res.ok) {
+      showNotification('Tenant created successfully!', 'success');
+      location.reload();
+    }
+  };
+
+  async function toggleFlag(id) {
+    await fetch(`/api/feature-flags/${id}/toggle`, { method: 'POST' });
+    showNotification('Flag updated', 'info');
+  }
+
+  function copyKey(key) {
+    navigator.clipboard.writeText(key);
+    showNotification('License key copied', 'success');
+  }
+</script>
+{% endblock %}

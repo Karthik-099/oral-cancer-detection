@@ -1,0 +1,104 @@
+---
+- name: OralAID Server Provisioning & Deployment
+  hosts: oralaid_servers
+  become: true
+  vars:
+    app_dir: /opt/oralaid
+    docker_compose_version: "2.23.0"
+
+  tasks:
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - git
+          - python3-pip
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{ docker_compose_version }}/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy application files
+      synchronize:
+        src: ../../
+        dest: "{{ app_dir }}/"
+        delete: yes
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=__pycache__"
+          - "--exclude=*.pyc"
+          - "--exclude=oral/"
+
+    - name: Create required directories
+      file:
+        path: "{{ app_dir }}/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - uploads
+        - static/results
+        - static/annotations
+        - logs
+        - models
+
+    - name: Pull and start containers
+      community.docker.docker_compose:
+        project_src: "{{ app_dir }}"
+        pull: yes
+        state: present
+
+    - name: Wait for app to be healthy
+      uri:
+        url: "http://localhost:5000/metrics"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 10
+
+    - name: Print app URL
+      debug:
+        msg: "✅ OralAID deployed at http://{{ ansible_host }}:5000"

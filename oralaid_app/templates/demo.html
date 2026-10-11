@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Book Demo — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .demo-shell {
+    background:
+      radial-gradient(circle at 78% 8%, rgba(55,138,221,0.20), transparent 34%),
+      linear-gradient(180deg, #fff, #f4faff);
+    min-height: 100%;
+    padding: 72px 0;
+  }
+  .demo-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+  .demo-copy {
+    position: sticky;
+    top: 96px;
+  }
+  .demo-title {
+    font-size: clamp(2.6rem, 6vw, 5rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.94;
+    margin: 12px 0 18px;
+  }
+  .demo-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 24px 76px rgba(14,109,180,0.16);
+    padding: 30px;
+  }
+  .step-card { display: none; }
+  .step-card.active { display: block; }
+  .time-slot {
+    min-height: 54px;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 800;
+  }
+  .time-slot:hover,
+  .time-slot.selected {
+    color: var(--primary);
+    background: var(--primary-light);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+  }
+  .demo-point {
+    display: flex;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .demo-point i {
+    color: var(--primary);
+    font-size: 1.2rem;
+    margin-top: 4px;
+  }
+  @media (max-width: 991.98px) {
+    .demo-layout { grid-template-columns: 1fr; }
+    .demo-copy { position: static; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="demo-shell">
+  <div class="container">
+    <div class="demo-layout">
+      <div class="demo-copy reveal-on-scroll">
+        <div class="section-label">Enterprise Demo</div>
+        <h1 class="demo-title gradient-text">See OralAID running as a hospital-grade AI workflow.</h1>
+        <p style="color:var(--text-secondary);font-size:1.08rem;line-height:1.75">Choose a date and slot. We will create a demo ticket and walk your team through on-premise deployment, data source connectors, screening workflows, and reporting.</p>
+        <div class="mt-4">
+          <div class="demo-point"><i class="ti ti-server"></i><div><strong>On-premise architecture</strong><br><span style="color:var(--text-secondary)">How patient data stays inside your hospital environment.</span></div></div>
+          <div class="demo-point"><i class="ti ti-plug-connected"></i><div><strong>Real-time connectors</strong><br><span style="color:var(--text-secondary)">FHIR, CSV, secure folders, and tablet sync workflows.</span></div></div>
+          <div class="demo-point"><i class="ti ti-chart-line"></i><div><strong>Progression AI</strong><br><span style="color:var(--text-secondary)">Track lesion area and confidence over follow-up visits.</span></div></div>
+        </div>
+      </div>
+
+      <div class="demo-card reveal-on-scroll">
+        <div id="step1" class="step-card active">
+          <div class="section-label mb-2">Step 1</div>
+          <h4 style="font-weight:800" class="mb-4">Tell us about your organization</h4>
+          <form id="demoForm" novalidate>
+            <div class="mb-3">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-control" id="d_name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Work Email</label>
+              <input type="email" class="form-control" id="d_email" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Hospital / Organization</label>
+              <input type="text" class="form-control" id="d_hospital" required>
+            </div>
+            <div class="row g-3 mb-4">
+              <div class="col-6">
+                <label class="form-label">Role</label>
+                <select class="form-select" id="d_role" required>
+                  <option value="Hospital Admin">Hospital Admin</option>
+                  <option value="Dentist">Dentist</option>
+                  <option value="Oncologist">Oncologist</option>
+                  <option value="IT / Security">IT / Security</option>
+                  <option value="Researcher">Researcher</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Country</label>
+                <input type="text" class="form-control" id="d_country" placeholder="e.g. India" required>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary w-100 py-3" onclick="nextStep(2)">
+              Continue to Slots <i class="ti ti-arrow-right ms-2"></i>
+            </button>
+          </form>
+        </div>
+
+        <div id="step2" class="step-card">
+          <div class="section-label mb-2">Step 2</div>
+          <h4 style="font-weight:800" class="mb-4">Select a date and slot</h4>
+          <div class="mb-4">
+            <label class="form-label">Select Date</label>
+            <input type="date" class="form-control" id="d_date" min="{{ now.strftime('%Y-%m-%d') if now else '' }}" required>
+          </div>
+          <label class="form-label">Available Slots (IST)</label>
+          <div class="row g-3 mb-5">
+            <div class="col-4"><div class="time-slot" onclick="selectSlot(this, '10:00')">10:00 AM</div></div>
+            <div class="col-4"><div class="time-slot" onclick="selectSlot(this, '14:00')">02:00 PM</div></div>
+            <div class="col-4"><div class="time-slot" onclick="selectSlot(this, '16:00')">04:00 PM</div></div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary flex-grow-1" onclick="nextStep(1)">Back</button>
+            <button class="btn btn-primary flex-grow-1" onclick="submitDemo()">Book Demo</button>
+          </div>
+        </div>
+
+        <div id="step3" class="step-card text-center py-4">
+          <div class="brand-mark mx-auto mb-4" style="width:64px;height:64px;font-size:1rem">OA</div>
+          <div class="section-label">Ticket Created</div>
+          <h4 style="font-weight:800;margin-top:10px">Your demo ticket is created.</h4>
+          <p style="color:var(--text-secondary)">Ticket <strong id="ticketId">OAID-00000</strong> has been created for <strong id="confirmEmail"></strong>. Our team will reach out with a calendar invite and deployment checklist.</p>
+          <a href="{{ url_for('index') }}" class="btn btn-outline-primary mt-3">Return to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let selectedTime = null;
+
+  function nextStep(step) {
+    const form = document.getElementById('demoForm');
+    if (step === 2 && !form.checkValidity()) {
+      form.classList.add('was-validated');
+      showNotification('Please complete your organization details.', 'warning');
+      return;
+    }
+    document.querySelectorAll('.step-card').forEach((card) => card.classList.remove('active'));
+    document.getElementById('step' + step).classList.add('active');
+  }
+
+  function selectSlot(el, time) {
+    document.querySelectorAll('.time-slot').forEach((slot) => slot.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedTime = time;
+  }
+
+  async function submitDemo() {
+    if (!selectedTime || !document.getElementById('d_date').value) {
+      showNotification('Please select a date and slot.', 'warning');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', document.getElementById('d_name').value);
+    formData.append('email', document.getElementById('d_email').value);
+    formData.append('hospital', document.getElementById('d_hospital').value);
+    formData.append('role', document.getElementById('d_role').value);
+    formData.append('country', document.getElementById('d_country').value);
+    formData.append('requested_time', document.getElementById('d_date').value + 'T' + selectedTime + ':00Z');
+
+    const response = await fetch('/demo', { method: 'POST', body: formData });
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById('ticketId').textContent = data.ticket_id || 'OAID-00000';
+      document.getElementById('confirmEmail').textContent = document.getElementById('d_email').value;
+      nextStep(3);
+    } else {
+      showNotification('Demo ticket could not be created. Please try again.', 'danger');
+    }
+  }
+</script>
+{% endblock %}

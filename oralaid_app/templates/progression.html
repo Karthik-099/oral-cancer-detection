@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}Progression AI — {{ patient.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .comparison-slider {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+  }
+  .comparison-img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  .img-overlay {
+    width: 50%;
+    border-right: 3px solid #fff;
+    z-index: 1;
+  }
+  .slider-handle {
+    position: absolute;
+    top: 0; left: 50%;
+    width: 4px; height: 100%;
+    background: #fff;
+    cursor: ew-resize;
+    z-index: 2;
+  }
+  .slider-btn {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px; height: 40px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  }
+  .label-first, .label-latest {
+    position: absolute;
+    top: 20px;
+    padding: 6px 12px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    z-index: 3;
+  }
+  .label-first { left: 20px; }
+  .label-latest { right: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <div>
+      <h4 style="font-weight:800;margin:0">Lesion Progression — {{ patient.name }}</h4>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Tracking lesion growth and clinical risk over {{ visits|length }} visits.</p>
+    </div>
+    <span class="badge badge-risk-{% if latest_risk=='High-risk' %}high{% elif latest_risk=='Medium-risk' %}medium{% elif latest_risk=='Low-risk' %}low{% else %}low{% endif %} px-3 py-2">
+      {{ latest_risk }}
+    </span>
+  </div>
+</div>
+
+{% if not visits %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="ti ti-chart-line" style="font-size:3rem;color:var(--primary);opacity:0.28"></i>
+    <h5 class="mt-3">No progression data yet</h5>
+    <p style="color:var(--text-secondary)">Progression trends appear after this patient has at least one completed diagnosis.</p>
+    <a href="{{ url_for('diagnose') }}" class="btn btn-primary">Create Diagnosis</a>
+  </div>
+</div>
+{% else %}
+
+{% if last_change > 20 %}
+<div class="alert alert-danger border-0 mb-4 d-flex align-items-center gap-3" style="border-radius:16px;background:rgba(226,75,74,0.1);color:var(--danger)">
+  <i class="ti ti-alert-triangle" style="font-size:2rem"></i>
+  <div>
+    <h6 style="margin:0;font-weight:800">⚠ Rapid Progression Detected</h6>
+    <p style="margin:0;font-size:0.85rem">Lesion area increased by <strong>{{ last_change }}%</strong> since last visit. Immediate specialist referral and biopsy recommended.</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4 mb-5">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header bg-white">Lesion Growth Analysis (Pixels)</div>
+      <div class="card-body">
+        <canvas id="progressionChart" style="max-height:350px"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header bg-white">Side-by-Side Comparison</div>
+      <div class="card-body">
+        <div class="comparison-slider" id="sliderContainer">
+          <img src="{{ url_for('uploaded_file', filename=latest_visit.diagnosis.image_path) }}" class="comparison-img" loading="lazy">
+          <div class="comparison-img img-overlay" id="overlayImg" style="background-image: url('{{ url_for('uploaded_file', filename=first_visit.diagnosis.image_path) }}'); background-size: cover; background-position: center;"></div>
+          <div class="slider-handle" id="sliderHandle">
+            <div class="slider-btn"><i class="ti ti-arrows-left-right"></i></div>
+          </div>
+          <span class="label-first">First Visit ({{ first_visit.visit_date.strftime('%b %d') }})</span>
+          <span class="label-latest">Latest ({{ latest_visit.visit_date.strftime('%b %d') }})</span>
+        </div>
+        <p class="text-muted small mt-3">Slide to compare anatomical changes between the first and most recent diagnosis.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white">Visit History & Volumetric Data</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Visit #</th>
+            <th>Date</th>
+            <th>Diagnosis</th>
+            <th>Confidence</th>
+            <th>Lesion Area</th>
+            <th>Growth Change</th>
+          </tr>
+        </thead>
+        <tbody id="visitTable">
+          <!-- Data will be populated via JS for Change % calculation if not handled in jinja -->
+          {% for v in visits %}
+          <tr>
+            <td style="font-weight:700">#{{ v.visit_number }}</td>
+            <td>{{ v.visit_date.strftime('%b %d, %Y') }}</td>
+            <td><span class="badge bg-light text-primary border">{{ v.class_name }}</span></td>
+            <td>{{ '%.1f'|format((v.confidence or 0) * 100) }}%</td>
+            <td>{{ v.lesion_area_px or 0 }} px</td>
+            <td id="change-{{ loop.index0 }}">--</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const visits = [
+    {% for v in visits %}
+    {
+      date: '{{ v.visit_date.strftime("%Y-%m-%d") }}',
+      area: {{ v.lesion_area_px or 0 }},
+      conf: {{ (v.confidence or 0) * 100 }}
+    },
+    {% endfor %}
+  ];
+
+  window.addEventListener('load', () => {
+    if (!visits.length) return;
+    initChart();
+    initSlider();
+    calculateChanges();
+  });
+
+  function initChart() {
+    const ctx = document.getElementById('progressionChart').getContext('2d');
+    const labels = visits.map(v => v.date);
+    const areaData = visits.map(v => v.area);
+    const confData = visits.map(v => v.conf);
+    const rapidGrowth = areaData.map((area, index) => {
+      if (index === 0 || areaData[index - 1] <= 0) return false;
+      return ((area - areaData[index - 1]) / areaData[index - 1]) > 0.2;
+    });
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Lesion Area (px)',
+            data: areaData,
+            borderColor: '#0e6db4',
+            backgroundColor: 'rgba(14,109,180,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: rapidGrowth.map((warning) => warning ? 7 : 4),
+            pointBackgroundColor: rapidGrowth.map((warning) => warning ? '#E24B4A' : '#0e6db4'),
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            yAxisID: 'y'
+          },
+          {
+            label: 'AI Confidence (%)',
+            data: confData,
+            borderColor: '#1D9E75',
+            borderDash: [5, 5],
+            fill: false,
+            tension: 0.3,
+            yAxisID: 'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { type: 'linear', position: 'left', title: { display: true, text: 'Area (Pixels)' } },
+          y1: { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: 'Confidence %' }, grid: { drawOnChartArea: false } }
+        }
+      }
+    });
+  }
+
+  function initSlider() {
+    const container = document.getElementById('sliderContainer');
+    const handle = document.getElementById('sliderHandle');
+    const overlay = document.getElementById('overlayImg');
+    if (!container || !handle || !overlay) return;
+    
+    const move = (e) => {
+      let x = e.clientX - container.getBoundingClientRect().left;
+      if (x < 0) x = 0;
+      if (x > container.offsetWidth) x = container.offsetWidth;
+      
+      let pct = (x / container.offsetWidth) * 100;
+      handle.style.left = x + 'px';
+      overlay.style.width = pct + '%';
+    };
+
+    container.onmousemove = move;
+    container.ontouchmove = (e) => move(e.touches[0]);
+  }
+
+  function calculateChanges() {
+    for (let i = 1; i < visits.length; i++) {
+      const prev = visits[i-1].area;
+      const curr = visits[i].area;
+      if (prev > 0) {
+        const change = ((curr - prev) / prev) * 100;
+        const cell = document.getElementById(`change-${i}`);
+        cell.textContent = (change > 0 ? '+' : '') + change.toFixed(1) + '%';
+        cell.className = change > 20 ? 'text-danger fw-bold' : (change > 0 ? 'text-warning' : 'text-success');
+      }
+    }
+  }
+</script>
+{% endblock %}

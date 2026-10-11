@@ -1,0 +1,196 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    🦷 OralAID - QUICK REFERENCE CARD                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📁 PROJECT STRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+/home/karthik/oral-cancer-detection/
+├── oralaid_app/                    ← MAIN APPLICATION (Flask)
+│   ├── app.py                      ← Original Flask app (Port 5000)
+│   ├── app_fastapi.py              ← NEW FastAPI app (Port 8000)
+│   ├── index_fastapi.html          ← NEW Modern frontend
+│   ├── FASTAPI_GUIDE.md            ← Complete setup guide
+│   └── templates/                  ← Flask HTML templates
+├── models/                         ← TRAINED AI MODELS ✅
+│   ├── final_efficientnet_b4_oral_cancer.pth
+│   ├── mobilenet_classifier.pth
+│   └── unet_segmenter.pth
+├── data/                           ← DATASET (608 patients) ✅
+│   └── original/patient_1 to patient_608/
+└── src/                            ← Source code modules
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 QUICK START COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. INSTALL DEPENDENCIES
+   cd /home/karthik/oral-cancer-detection/oralaid_app
+   pip3 install fastapi uvicorn[standard] python-multipart python-jose passlib
+
+2. RUN FASTAPI SERVER
+   python3 app_fastapi.py
+   
+3. OPEN API DOCUMENTATION
+   Browser: http://localhost:8000/docs
+
+4. SERVE FRONTEND
+   python3 -m http.server 3000
+   Browser: http://localhost:3000/index_fastapi.html
+
+═══════════════════════════════════════════════════════════════════════════════
+🔗 KEY URLS
+═══════════════════════════════════════════════════════════════════════════════
+FastAPI Server:     http://localhost:8000
+API Docs (Swagger): http://localhost:8000/docs
+API Docs (ReDoc):   http://localhost:8000/redoc
+Frontend:           http://localhost:3000/index_fastapi.html
+Flask App:          http://localhost:5000 (original)
+
+═══════════════════════════════════════════════════════════════════════════════
+📡 API ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════════
+GET  /                      → Landing page
+GET  /api/health            → Health check
+POST /api/register          → Register user
+POST /api/login             → User login
+POST /api/predict           → AI diagnosis (upload image)
+GET  /api/stats             → System statistics
+GET  /api/diagnoses         → Recent diagnoses
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TEST COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+# Health Check
+curl http://localhost:8000/api/health
+
+# Login
+curl -X POST http://localhost:8000/api/login \
+  -F "username=admin" -F "password=admin123"
+
+# Predict (replace image path)
+curl -X POST http://localhost:8000/api/predict \
+  -F "file=@/path/to/image.jpg" \
+  -F "patient_name=Test Patient" \
+  -F "patient_age=45"
+
+# Statistics
+curl http://localhost:8000/api/stats
+
+═══════════════════════════════════════════════════════════════════════════════
+🔐 DEFAULT CREDENTIALS
+═══════════════════════════════════════════════════════════════════════════════
+Username: admin
+Password: admin123
+
+═══════════════════════════════════════════════════════════════════════════════
+🤖 AI MODEL CLASSIFICATION (8 Classes)
+═══════════════════════════════════════════════════════════════════════════════
+0: Normal                           → Low-risk
+1: Keratosis                        → Low-risk
+2: Leukoplakia                      → Low-risk
+3: Speckled Leukoplakia             → High-risk ⚠️
+4: Erythroplakia                    → High-risk ⚠️
+5: Lichen Planus                    → Low-risk
+6: Squamous Cell Carcinoma          → High-risk ⚠️
+7: Other Lesion                     → Medium-risk
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 APPLICATION FLOW
+═══════════════════════════════════════════════════════════════════════════════
+1. User uploads oral cavity image
+2. Enter patient details (name, age, gender, history)
+3. Click "Analyze Image"
+4. AI processes image (MobileNetV3)
+5. Returns:
+   - Prediction class
+   - Confidence score
+   - Risk level
+   - LIME explanation
+   - GradCAM heatmap
+6. Results saved to database
+7. Display on frontend
+
+═══════════════════════════════════════════════════════════════════════════════
+🛠️ TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Port in use:
+  lsof -i :8000
+  kill -9 <PID>
+
+Module not found:
+  pip3 install --user <module-name>
+
+CORS error:
+  Serve HTML via HTTP server (python3 -m http.server 3000)
+
+Database locked:
+  rm oralaid_fastapi.db
+  python3 app_fastapi.py
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 COMPARISON: Flask vs FastAPI
+═══════════════════════════════════════════════════════════════════════════════
+Feature              Flask (app.py)      FastAPI (app_fastapi.py)
+─────────────────────────────────────────────────────────────────────────────
+Port                 5000                8000
+Auto Docs            ❌                  ✅ (Swagger + ReDoc)
+Performance          Good                Excellent (async)
+Type Validation      Manual              Automatic
+API Testing          Manual              Built-in UI
+Modern Standards     ❌                  ✅ (OpenAPI)
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+[ ] Install dependencies
+[ ] Start FastAPI server
+[ ] Access http://localhost:8000/docs
+[ ] Test health endpoint
+[ ] Test login with admin/admin123
+[ ] Upload test image via Swagger UI
+[ ] Verify prediction response
+[ ] Open frontend in browser
+[ ] Test image upload via frontend
+[ ] Verify LIME and GradCAM visualizations
+[ ] Check database for saved records
+
+═══════════════════════════════════════════════════════════════════════════════
+📝 FILES CREATED FOR YOU
+═══════════════════════════════════════════════════════════════════════════════
+✅ app_fastapi.py           - Complete FastAPI backend
+✅ index_fastapi.html       - Modern responsive frontend
+✅ FASTAPI_GUIDE.md         - Detailed setup guide
+✅ QUICK_REFERENCE.txt      - This file
+
+═══════════════════════════════════════════════════════════════════════════════
+🎓 NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+1. Read FASTAPI_GUIDE.md for detailed instructions
+2. Install FastAPI dependencies
+3. Run the server: python3 app_fastapi.py
+4. Test APIs at http://localhost:8000/docs
+5. Test frontend at http://localhost:3000/index_fastapi.html
+6. Deploy to production when ready
+
+═══════════════════════════════════════════════════════════════════════════════
+💡 TIPS
+═══════════════════════════════════════════════════════════════════════════════
+- Use Swagger UI for easy API testing
+- Check browser console (F12) for frontend errors
+- Monitor server logs for backend issues
+- Test with sample images from data/original/
+- Use admin/admin123 for initial testing
+
+═══════════════════════════════════════════════════════════════════════════════
+📞 SUPPORT
+═══════════════════════════════════════════════════════════════════════════════
+- Check FASTAPI_GUIDE.md for detailed troubleshooting
+- Review server logs for error messages
+- Test individual components separately
+- Verify all dependencies are installed
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ✅ EVERYTHING IS READY TO RUN!                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝

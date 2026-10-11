@@ -1,0 +1,10 @@
+{
+  "name": "OralAID",
+  "short_name": "OralAID",
+  "description": "Explainable AI for oral cancer screening",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#FAFAF7",
+  "theme_color": "#0C6E63",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

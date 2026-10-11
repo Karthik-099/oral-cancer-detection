@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% block title %}New Diagnosis — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .upload-zone {
+    border: 2px dashed #378ADD !important;
+    border-radius: 20px !important;
+    background: #f0f7ff;
+    padding: 56px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s ease-in-out;
+  }
+  .upload-zone.dragover {
+    border: 2px solid #0e6db4 !important;
+    background: #e6f1fb;
+    transform: scale(1.01);
+  }
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+  @media (max-width: 991px) { .preview-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 576px) { .preview-grid { grid-template-columns: 1fr; } }
+  
+  .img-card {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: var(--shadow);
+  }
+  .img-card img {
+    width: 100%; height: 160px; object-fit: cover; display: block;
+  }
+  .img-card-body { padding: 12px; }
+  .img-card-name {
+    font-size: .85rem; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .img-card-size { font-size: .75rem; color: var(--text-secondary); }
+  
+  .status-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+  .pill-queued   { background: #f1f5f9; color: #64748b; }
+  .pill-analyzing{ background: rgba(14,109,180,0.1); color: var(--primary); animation: pulse 1.5s infinite; }
+  .pill-done     { background: rgba(29,158,117,0.1); color: var(--success); }
+  .pill-error    { background: rgba(226,75,74,0.1); color: var(--danger); }
+  .capture-tag {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 8px;
+    color: var(--primary);
+    background: var(--primary-light);
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+  
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  
+  .remove-btn {
+    position: absolute; top: 8px; right: 8px;
+    width: 28px; height: 28px;
+    background: rgba(0,0,0,0.5); color: #fff;
+    border: none; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .remove-btn:hover { background: var(--danger); }
+  
+  .section-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+  
+  .risk-toggle-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h3 style="font-weight:800;margin:0">AI Diagnostic Center</h3>
+    <p style="color:var(--text-secondary);margin:4px 0 0">Upload clinical images for instant AI analysis and risk stratification.</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <!-- Upload Zone -->
+    <div class="card mb-4">
+      <div class="card-header bg-white">
+        <ul class="nav nav-tabs card-header-tabs" id="uploadTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button">Upload Files</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera" type="button"><i class="ti ti-camera me-1"></i>Camera Capture</button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body p-4">
+        <div class="tab-content">
+          <!-- File Upload Tab -->
+          <div class="tab-pane fade show active" id="files">
+            <div class="upload-zone" id="uploadZone">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);margin-bottom:16px">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <h5 style="font-weight:700">Drag &amp; drop intraoral images here</h5>
+              <p style="color:var(--text-secondary);margin-bottom:0">or <span style="color:var(--primary);font-weight:600">click to browse</span></p>
+              <p style="color:var(--text-secondary);font-size:0.8rem;margin-top:16px">Supports JPG, PNG up to 10MB each &middot; Max 12 images</p>
+              <input type="file" id="fileInput" accept="image/jpeg,image/png" multiple style="display:none">
+            </div>
+          </div>
+
+          <!-- Camera Capture Tab -->
+          <div class="tab-pane fade" id="camera">
+            <div class="row g-4">
+              <div class="col-md-7">
+                <div style="background:#000;border-radius:12px;overflow:hidden;position:relative;aspect-ratio:4/3">
+                  <video id="webcamView" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:none"></video>
+                  <canvas id="usbPreviewCanvas" width="640" height="480" style="width:100%;height:100%;object-fit:cover;display:block"></canvas>
+                  <canvas id="captureCanvas" style="display:none"></canvas>
+                  <div id="cameraPlaceholder" class="d-flex flex-column align-items-center justify-content-center h-100 text-white" style="position:absolute;inset:0">
+                    <i class="ti ti-camera-off mb-3" style="font-size:3rem;opacity:0.3"></i>
+                    <p class="small opacity-50">Camera stream inactive</p>
+                  </div>
+                  <span class="badge bg-primary" style="position:absolute;left:14px;top:14px">Live Preview</span>
+                  <div id="scanningOverlay" style="display:none;position:absolute;top:0;left:0;right:0;height:2px;background:var(--primary);box-shadow:0 0 10px var(--primary);animation:scan 2s linear infinite"></div>
+                </div>
+                <div class="d-flex gap-2 mt-3">
+                  <button class="btn btn-outline-primary flex-grow-1" onclick="initWebcam()"><i class="ti ti-video me-1"></i>Use Webcam</button>
+                  <button class="btn btn-outline-secondary flex-grow-1" onclick="initUSB()"><i class="ti ti-usb me-1"></i>Connect USB Camera</button>
+                </div>
+              </div>
+              <div class="col-md-5">
+                <div class="p-3 bg-light rounded" style="height:100%">
+                  <h6 style="font-weight:700">Capture Controls</h6>
+                  <p class="small text-muted mb-4">Snap high-resolution intraoral photos directly into the diagnostic queue.</p>
+                  
+                  <div id="usbStatus" class="mb-4" style="display:none">
+                    <span class="badge bg-success"><i class="ti ti-circle-check me-1"></i><span id="deviceName">Camera Connected</span></span>
+                  </div>
+
+                  <button class="btn btn-primary btn-lg w-100 mb-3" id="snapBtn" disabled onclick="captureFrame()">
+                    <i class="ti ti-camera-plus me-2"></i>Capture Frame
+                  </button>
+                  
+                  <div class="alert alert-info py-2 small border-0" id="usbSupportAlert" style="display:none">
+                    <i class="ti ti-info-circle me-1"></i>WebUSB is supported.
+                  </div>
+                  <div class="alert alert-warning py-2 small border-0" id="usbNoSupport" style="display:none">
+                    <i class="ti ti-alert-triangle me-1"></i>Your browser doesn't support USB camera integration. Use Chrome or Edge, or upload images manually.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-grid" id="previewGrid" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- Patient Info Form -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <span class="section-label">Patient Information</span>
+        
+        <div class="mb-3">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-control" id="p_name" placeholder="John Doe" required>
+        </div>
+        
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Age</label>
+            <input type="number" class="form-control" id="p_age" placeholder="45" min="1" max="120" required>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Gender</label>
+            <select class="form-select" id="p_gender">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="alert alert-info border-0 mt-4 mb-0">
+          <strong>AstraOral AI analysis only.</strong>
+          Clinical risk factor toggles are not required; the model analyzes the uploaded image directly.
+        </div>
+
+        <div class="mt-4">
+          <button class="btn btn-primary btn-lg w-100 py-3" id="analyzeBtn" onclick="startAnalysis()">
+            <i class="ti ti-brain me-2"></i>Analyze Images
+          </button>
+        </div>
+
+        <div id="progressSection" style="display:none;margin-top:20px">
+          <div class="d-flex justify-content-between mb-1">
+            <span style="font-size:0.8rem;font-weight:600" id="progressStatus">Processing...</span>
+            <span style="font-size:0.8rem;font-weight:700" id="progressPct">0%</span>
+          </div>
+          <div class="progress" style="height:10px">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" id="mainProgressBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const zone = document.getElementById('uploadZone');
+  const input = document.getElementById('fileInput');
+  const grid = document.getElementById('previewGrid');
+  let selectedFiles = [];
+  let usbDevice = null;
+
+  zone.onclick = () => input.click();
+  
+  zone.ondragover = (e) => {
+    e.preventDefault();
+    zone.classList.add('dragover');
+  };
+  
+  zone.ondragleave = () => zone.classList.remove('dragover');
+  
+  zone.ondrop = (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  };
+
+  input.onchange = () => handleFiles(input.files, 'Upload Files');
+
+  function handleFiles(files, source = 'Upload Files') {
+    [...files].forEach(file => {
+      if (selectedFiles.length >= 12) return;
+      if (!file.type.startsWith('image/')) return;
+      if (file.size > 10 * 1024 * 1024) return;
+      selectedFiles.push({ file, source });
+    });
+    renderGrid();
+  }
+
+  function renderGrid() {
+    if (selectedFiles.length === 0) {
+      grid.style.display = 'none';
+      return;
+    }
+    grid.style.display = 'grid';
+    grid.innerHTML = '';
+    selectedFiles.forEach((item, index) => {
+      const file = item.file;
+      const kb = (file.size / 1024).toFixed(0);
+      const card = document.createElement('div');
+      card.className = 'img-card';
+      card.innerHTML = `
+        <img src="${URL.createObjectURL(file)}" alt="Preview" loading="lazy">
+        <button class="remove-btn" onclick="removeFile(${index})"><i class="ti ti-x"></i></button>
+        <div class="img-card-body">
+          <div class="img-card-name">${file.name}</div>
+          <div class="img-card-size">${kb} KB</div>
+          <div class="capture-tag">${item.source}</div>
+          <div class="status-pill pill-queued" id="status-${index}">Queued</div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    renderGrid();
+  }
+
+  // Hardware Capture Logic
+  let stream = null;
+  const video = document.getElementById('webcamView');
+  const canvas = document.getElementById('captureCanvas');
+  const usbPreviewCanvas = document.getElementById('usbPreviewCanvas');
+  const placeholder = document.getElementById('cameraPlaceholder');
+  const snapBtn = document.getElementById('snapBtn');
+
+  document.addEventListener('DOMContentLoaded', () => {
+    drawUsbPlaceholder();
+    if ('usb' in navigator) {
+      document.getElementById('usbSupportAlert').style.display = 'block';
+    } else {
+      document.getElementById('usbNoSupport').style.display = 'block';
+    }
+  });
+
+  function drawUsbPlaceholder() {
+    const ctx = usbPreviewCanvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 640, 480);
+    gradient.addColorStop(0, '#071827');
+    gradient.addColorStop(1, '#0e6db4');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 640, 480);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 2;
+    for (let x = 40; x < 640; x += 80) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 480);
+      ctx.stroke();
+    }
+    for (let y = 40; y < 480; y += 80) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(640, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 28px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Live Preview', 320, 238);
+    ctx.font = '500 16px Inter, sans-serif';
+    ctx.fillText('USB intraoral camera placeholder', 320, 270);
+  }
+
+  async function initWebcam() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+      video.srcObject = stream;
+      video.style.display = 'block';
+      usbPreviewCanvas.style.display = 'none';
+      placeholder.style.display = 'none';
+      snapBtn.disabled = false;
+      document.getElementById('scanningOverlay').style.display = 'block';
+      showNotification('Webcam initialized', 'success');
+    } catch (err) {
+      showNotification('Error accessing webcam: ' + err.message, 'danger');
+    }
+  }
+
+  async function initUSB() {
+    if (!('usb' in navigator)) {
+      document.getElementById('usbNoSupport').style.display = 'block';
+      return;
+    }
+    try {
+      usbDevice = await navigator.usb.requestDevice({ filters: [] });
+      await usbDevice.open();
+      if (!usbDevice.configuration) await usbDevice.selectConfiguration(1);
+      await usbDevice.claimInterface(0);
+      
+      document.getElementById('usbStatus').style.display = 'block';
+      document.getElementById('deviceName').textContent = usbDevice.productName || 'USB Camera';
+      placeholder.style.display = 'none';
+      usbPreviewCanvas.style.display = 'block';
+      document.getElementById('scanningOverlay').style.display = 'block';
+      snapBtn.disabled = false;
+      drawUsbPlaceholder();
+      showNotification('USB camera connected', 'success');
+    } catch (err) {
+      showNotification('USB Connection Failed: ' + err.message, 'warning');
+    }
+  }
+
+  function captureFrame() {
+    const ctx = canvas.getContext('2d');
+    canvas.width = 640;
+    canvas.height = 480;
+
+    if (stream && video.videoWidth) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.drawImage(usbPreviewCanvas, 0, 0, canvas.width, canvas.height);
+    }
+    
+    canvas.toBlob((blob) => {
+      const file = new File([blob], `capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      selectedFiles.push({ file, source: 'Camera Capture' });
+      renderGrid();
+      showNotification('Frame captured to queue', 'success');
+      
+      // Visual flash
+      video.style.opacity = '0.5';
+      setTimeout(() => video.style.opacity = '1', 100);
+    }, 'image/jpeg', 0.95);
+  }
+
+  async function startAnalysis() {
+    if (selectedFiles.length === 0) {
+      showNotification('Please upload at least one image.', 'warning');
+      return;
+    }
+
+    const nameField = document.getElementById('p_name');
+    const ageField = document.getElementById('p_age');
+    if (!nameField.value.trim()) {
+      nameField.focus();
+      showNotification('Patient name is required.', 'warning');
+      return;
+    }
+    if (!ageField.value || Number(ageField.value) < 1 || Number(ageField.value) > 120) {
+      ageField.focus();
+      showNotification('Enter a valid patient age between 1 and 120.', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('analyzeBtn');
+    const prog = document.getElementById('progressSection');
+    const bar = document.getElementById('mainProgressBar');
+    const pct = document.getElementById('progressPct');
+    const status = document.getElementById('progressStatus');
+
+    btn.disabled = true;
+    prog.style.display = 'block';
+
+    const pName = document.getElementById('p_name').value || 'Anonymous';
+    const pAge = document.getElementById('p_age').value || '40';
+    const pGender = document.getElementById('p_gender').value;
+    const pTobacco = 0;
+    const pAlcohol = 0;
+    const pFamily = 0;
+
+    let completed = 0;
+    let firstDiagnosisId = null;
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const statusPill = document.getElementById(`status-${i}`);
+      statusPill.className = 'status-pill pill-analyzing';
+      statusPill.textContent = 'Analyzing...';
+      
+      status.textContent = `Processing image ${i+1} of ${selectedFiles.length}`;
+
+      const formData = new FormData();
+      formData.append('images', selectedFiles[i].file);
+      formData.append('patient_name', pName);
+      formData.append('patient_age', pAge);
+      formData.append('patient_gender', pGender);
+      formData.append('tobacco_use', pTobacco);
+      formData.append('alcohol_use', pAlcohol);
+      formData.append('family_history', pFamily);
+
+      try {
+        const response = await fetch('/diagnose', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        
+        if (data.results && data.results[0]) {
+          statusPill.className = 'status-pill pill-done';
+          statusPill.textContent = 'Done ✓';
+          if (!firstDiagnosisId) firstDiagnosisId = data.results[0].diagnosis_id;
+        } else {
+          throw new Error('Analysis failed');
+        }
+      } catch (err) {
+        statusPill.className = 'status-pill pill-error';
+        statusPill.textContent = 'Error';
+      }
+
+      completed++;
+      const percent = Math.round((completed / selectedFiles.length) * 100);
+      bar.style.width = percent + '%';
+      pct.textContent = percent + '%';
+    }
+
+    status.textContent = 'Analysis Complete';
+    setTimeout(() => {
+      if (firstDiagnosisId) window.location.href = `/result/${firstDiagnosisId}`;
+    }, 1000);
+  }
+</script>
+{% endblock %}

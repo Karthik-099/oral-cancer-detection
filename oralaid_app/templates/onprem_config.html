@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}On-Premise Configuration — OralAID{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h4 style="font-weight:800;margin:0">On-Premise Configuration</h4>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Manage local deployment settings and license activation.</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white">Server Information</div>
+      <div class="card-body">
+        <div class="mb-4">
+          <label class="section-label mb-2">Hardware Fingerprint (SHA256)</label>
+          <div class="p-3 bg-light rounded d-flex justify-content-between align-items-center">
+            <code class="text-primary" id="fingerprint">{{ fingerprint }}</code>
+            <button class="btn btn-sm btn-outline-primary" onclick="copyText('{{ fingerprint }}')"><i class="ti ti-copy"></i></button>
+          </div>
+          <p class="text-muted small mt-2">This unique ID is generated from your server's CPU and hostname. It must be provided to OralAID for license generation.</p>
+        </div>
+
+        <div class="mb-4">
+          <label class="section-label mb-2">Deployment Mode</label>
+          <div>
+            <span class="badge {% if deploy_mode == 'onprem' %}bg-primary{% else %}bg-secondary{% endif %} px-3 py-2" style="font-size:0.9rem">
+              {{ deploy_mode|upper }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white">License Activation</div>
+      <div class="card-body">
+        <form id="licenseForm">
+          <div class="mb-4">
+            <label class="form-label">Activation Key</label>
+            <input type="text" class="form-control form-control-lg" placeholder="XXXX-XXXX-XXXX-XXXX" required>
+            <p class="text-muted small mt-2">Enter the license key provided by your OralAID account manager.</p>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-100">
+            <i class="ti ti-check me-2"></i>Activate Server
+          </button>
+        </form>
+
+        <hr class="my-4">
+
+        <h6 style="font-weight:700" class="mb-3">Service Connectivity</h6>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span>MinIO Object Storage</span>
+          <span class="badge bg-success">Connected</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span>Local PostgreSQL</span>
+          <span class="badge bg-success">Connected</span>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary w-100">Test Connection</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyText(txt) {
+    navigator.clipboard.writeText(txt);
+    showNotification('Fingerprint copied', 'success');
+  }
+</script>
+{% endblock %}

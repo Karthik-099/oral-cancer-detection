@@ -1,0 +1,107 @@
+name: OralAID Model CI
+
+on:
+  push:
+    branches:
+      - "models/**"
+      - "model/**"
+    paths:
+      - "models/**"
+      - "oralaid_app/models/**"
+      - "oralaid_app/training/**"
+      - ".github/workflows/model_ci.yml"
+  pull_request:
+    paths:
+      - "models/**"
+      - "oralaid_app/models/**"
+      - "oralaid_app/training/**"
+
+jobs:
+  model-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r oralaid_app/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run Model Unit Tests
+        run: |
+          set -e
+          if [ -d "tests/models" ]; then
+            pytest -q tests/models
+          elif [ -d "oralaid_app/tests" ]; then
+            pytest -q oralaid_app/tests -k "model or classifier or segmentation"
+          else
+            echo "No dedicated model tests found. Running smoke import checks."
+            python - <<'PY'
+from oralaid_app.models.classifier import OralCancerClassifier
+from oralaid_app.models.segmentation import UNet
+from oralaid_app.models.validator import is_oral_image
+print("Model imports OK")
+PY
+          fi
+
+      - name: Evaluate Holdout Set
+        run: |
+          set -e
+          mkdir -p artifacts
+          if [ -f "oralaid_app/training/train.py" ]; then
+            python oralaid_app/training/train.py --evaluate-only --output metrics_holdout.json || true
+          fi
+
+          if [ ! -f "metrics_holdout.json" ]; then
+            echo '{"auc": 0.0, "status": "missing"}' > metrics_holdout.json
+          fi
+
+          cp metrics_holdout.json artifacts/metrics_holdout.json
+
+      - name: Enforce AUC Regression Threshold
+        run: |
+          python - <<'PY'
+import json
+from pathlib import Path
+
+baseline_file = Path("oralaid_app/training/baseline_metrics.json")
+current_file = Path("metrics_holdout.json")
+
+if not current_file.exists():
+    raise SystemExit("Current holdout metrics file not found")
+
+current = json.loads(current_file.read_text())
+current_auc = float(current.get("auc", 0.0))
+
+if not baseline_file.exists():
+    raise SystemExit("Baseline metrics missing at oralaid_app/training/baseline_metrics.json")
+
+baseline = json.loads(baseline_file.read_text())
+baseline_auc = float(baseline.get("auc", 0.0))
+
+allowed_drop = 0.02
+actual_drop = baseline_auc - current_auc
+print(f"Baseline AUC: {baseline_auc:.4f}")
+print(f"Current AUC:  {current_auc:.4f}")
+print(f"Drop:         {actual_drop:.4f}")
+
+if actual_drop > allowed_drop:
+    raise SystemExit(f"AUC drop {actual_drop:.4f} exceeds allowed threshold {allowed_drop:.4f}")
+
+print("AUC regression check passed")
+PY
+
+      - name: Upload Evaluation Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-evaluation
+          path: artifacts/

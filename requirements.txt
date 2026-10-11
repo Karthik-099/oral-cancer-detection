@@ -5,5 +5,12 @@ opencv-python
 pandas
 requests
 flask
+flask-sqlalchemy
+flask-login
 numpy
 Pillow
+python-dotenv
+anthropic
+timm
+qrcode
+weasyprint

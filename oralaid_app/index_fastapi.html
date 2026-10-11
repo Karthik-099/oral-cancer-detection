@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OralAID - AI Oral Cancer Detection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; text-align: center; }
+        .header h1 { color: #667eea; font-size: 2.5em; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 1.1em; }
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .card h2 { color: #667eea; margin-bottom: 20px; font-size: 1.8em; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .file-upload { border: 3px dashed #667eea; padding: 40px; text-align: center; border-radius: 10px; cursor: pointer; transition: background 0.3s; }
+        .file-upload:hover { background: #f8f9ff; }
+        .file-upload input { display: none; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; width: 100%; font-weight: 600; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .result { display: none; }
+        .result.show { display: block; }
+        .prediction-box { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .prediction-box h3 { font-size: 2em; margin-bottom: 10px; }
+        .prediction-box p { font-size: 1.2em; }
+        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .viz-item img { width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .viz-item h4 { margin-bottom: 10px; color: #667eea; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.show { display: block; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+        .stat-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-box h3 { font-size: 2em; margin-bottom: 5px; }
+        .stat-box p { font-size: 0.9em; opacity: 0.9; }
+        .preview-image { max-width: 100%; border-radius: 10px; margin-top: 15px; display: none; }
+        .preview-image.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦷 OralAID</h1>
+            <p>AI-Powered Oral Cancer Detection System</p>
+            <div class="stats" id="stats"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>📤 Upload & Diagnose</h2>
+                <form id="diagnosisForm">
+                    <div class="form-group">
+                        <label>Patient Name</label>
+                        <input type="text" id="patientName" placeholder="Enter patient name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="patientAge" placeholder="Enter age" min="1" max="120">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="patientGender">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Medical History</label>
+                        <textarea id="medicalHistory" rows="3" placeholder="Enter relevant medical history"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Oral Cavity Image</label>
+                        <div class="file-upload" onclick="document.getElementById('imageFile').click()">
+                            <p>📁 Click to upload image</p>
+                            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Supported: JPG, PNG</p>
+                            <input type="file" id="imageFile" accept="image/*" required>
+                        </div>
+                        <img id="previewImage" class="preview-image">
+                    </div>
+                    
+                    <button type="submit" class="btn" id="submitBtn">🔬 Analyze Image</button>
+                </form>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px; color: #667eea; font-weight: 600;">Analyzing image...</p>
+                </div>
+            </div>
+
+            <div class="card result" id="resultCard">
+                <h2>📊 Diagnosis Results</h2>
+                
+                <div class="prediction-box" id="predictionBox">
+                    <h3 id="predictionName">-</h3>
+                    <p>Confidence: <span id="confidence">-</span>%</p>
+                    <p>Risk Level: <span id="riskLevel">-</span></p>
+                </div>
+                
+                <div class="viz-grid">
+                    <div class="viz-item">
+                        <h4>🔍 LIME Explanation</h4>
+                        <img id="limeImage" src="" alt="LIME">
+                    </div>
+                    <div class="viz-item">
+                        <h4>🔥 GradCAM Heatmap</h4>
+                        <img id="gradcamImage" src="" alt="GradCAM">
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9ff; border-radius: 8px;">
+                    <p><strong>Diagnosis ID:</strong> <span id="diagnosisId">-</span></p>
+                    <p><strong>Patient ID:</strong> <span id="patientId">-</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats`);
+                const data = await response.json();
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-box">
+                        <h3>${data.total_users}</h3>
+                        <p>Users</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>${data.total_patients}</h3>
+                        <p>Patients</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>${data.total_diagnoses}</h3>
+                        <p>Diagnoses</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3>${data.high_risk_cases}</h3>
+                        <p>High Risk</p>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        // Preview image
+        document.getElementById('imageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('previewImage');
+                    preview.src = e.target.result;
+                    preview.classList.add('show');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Submit form
+        document.getElementById('diagnosisForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('file', document.getElementById('imageFile').files[0]);
+            formData.append('patient_name', document.getElementById('patientName').value);
+            formData.append('patient_age', document.getElementById('patientAge').value || 0);
+            formData.append('patient_gender', document.getElementById('patientGender').value);
+            formData.append('medical_history', document.getElementById('medicalHistory').value);
+            
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('resultCard').classList.remove('show');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/predict`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update prediction box
+                    document.getElementById('predictionName').textContent = data.prediction;
+                    document.getElementById('confidence').textContent = data.confidence;
+                    document.getElementById('riskLevel').textContent = data.risk_level;
+                    document.getElementById('predictionBox').style.background = 
+                        `linear-gradient(135deg, ${data.color} 0%, ${data.color}dd 100%)`;
+                    
+                    // Update visualizations
+                    document.getElementById('limeImage').src = data.lime_image;
+                    document.getElementById('gradcamImage').src = data.gradcam_image;
+                    
+                    // Update IDs
+                    document.getElementById('diagnosisId').textContent = data.diagnosis_id;
+                    document.getElementById('patientId').textContent = data.patient_id;
+                    
+                    // Show results
+                    document.getElementById('resultCard').classList.add('show');
+                    
+                    // Reload stats
+                    loadStats();
+                } else {
+                    alert('Error: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error connecting to server: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+        
+        // Load stats on page load
+        loadStats();
+    </script>
+</body>
+</html>

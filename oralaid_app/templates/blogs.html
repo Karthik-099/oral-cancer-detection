@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Research — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .research-hero {
+    background:
+      radial-gradient(circle at 82% 10%, rgba(55,138,221,0.20), transparent 34%),
+      linear-gradient(180deg, #ffffff 0%, #f4faff 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 86px 0 58px;
+  }
+  .research-title {
+    max-width: 940px;
+    font-size: clamp(2.7rem, 6vw, 5.4rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.94;
+    margin: 12px 0 18px;
+  }
+  .who-card {
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    border-radius: 8px;
+    padding: 34px;
+    box-shadow: 0 26px 80px rgba(14,109,180,0.18);
+  }
+  .who-stat {
+    padding: 18px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+  }
+  .who-stat strong {
+    display: block;
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 2.1rem;
+    line-height: 1;
+  }
+  .blog-card {
+    overflow: hidden;
+    height: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    transition: transform 220ms ease, box-shadow 220ms ease;
+  }
+  .blog-card:hover {
+    transform: translateY(-6px);
+    box-shadow: var(--shadow-hover);
+  }
+  .blog-card img {
+    width: 100%;
+    height: 210px;
+    object-fit: cover;
+  }
+  .country-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 86px;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+  }
+  .country-bar {
+    height: 7px;
+    background: rgba(255,255,255,0.16);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .country-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #fff, #9ad9ff);
+  }
+  @media (max-width: 575.98px) {
+    .country-row { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="research-hero">
+  <div class="container">
+    <div class="section-label">Research Hub</div>
+    <h1 class="research-title gradient-text">WHO data, clinical AI insight, and enterprise deployment thinking.</h1>
+    <p style="color:var(--text-secondary);max-width:760px;font-size:1.08rem">A premium knowledge base for oral cancer screening teams, hospital executives, and clinical AI leaders.</p>
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="container">
+    <div class="who-card reveal-on-scroll">
+      <div class="section-label mb-3" style="color:#bfe8ff">Global Burden</div>
+      <h2 style="font-weight:800;margin:0 0 20px">Lip and oral cavity cancer remains a major global detection challenge.</h2>
+      <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="who-stat"><strong>{{ '{:,}'.format(who_data.total_cases) }}</strong><span>new cases in 2022</span></div></div>
+        <div class="col-md-3"><div class="who-stat"><strong>{{ '{:,}'.format(who_data.total_deaths) }}</strong><span>deaths in 2022</span></div></div>
+        <div class="col-md-3"><div class="who-stat"><strong>{{ who_data.survival_stage1 }}%</strong><span>5-year survival at Stage I</span></div></div>
+        <div class="col-md-3"><div class="who-stat"><strong>{{ who_data.survival_stage4 }}%</strong><span>5-year survival at Stage IV</span></div></div>
+      </div>
+      <p style="font-family:'Space Grotesk',sans-serif;font-size:1.55rem;line-height:1.2;margin:0 0 22px">“The best screening software does not ask clinicians to change their world. It meets the workflow and makes the next step obvious.”</p>
+      <div class="row g-4">
+        <div class="col-lg-6">
+          {% for c in who_data.countries[:5] %}
+          {% set pct = (c.cases / who_data.countries[0].cases * 100)|round %}
+          <div class="country-row">
+            <strong>{{ c.country }}</strong>
+            <div class="country-bar"><div class="country-fill" style="width:{{ pct }}%"></div></div>
+            <span>{{ '{:,}'.format(c.cases) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="col-lg-6">
+          {% for c in who_data.countries[5:] %}
+          {% set pct = (c.cases / who_data.countries[0].cases * 100)|round %}
+          <div class="country-row">
+            <strong>{{ c.country }}</strong>
+            <div class="country-bar"><div class="country-fill" style="width:{{ pct }}%"></div></div>
+            <span>{{ '{:,}'.format(c.cases) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="mt-3" style="opacity:.72;font-size:.78rem">Source: WHO oral health fact sheet and IARC/GLOBOCAN 2022.</div>
+    </div>
+
+    <div class="row g-4 mt-5">
+      {% for blog in blogs %}
+      <div class="col-md-6 col-lg-3 reveal-on-scroll">
+        <a href="{{ url_for('blog_post', slug=blog.slug) }}" style="text-decoration:none;color:inherit">
+          <article class="blog-card">
+            <img src="{{ blog.image }}" alt="{{ blog.title }}" loading="lazy">
+            <div class="p-4">
+              <div class="section-label mb-2">{{ blog.category }} · {{ blog.read_time }}</div>
+              <h3 style="font-size:1.05rem;font-weight:800;line-height:1.35">{{ blog.title }}</h3>
+              <p style="color:var(--text-secondary);font-size:.9rem;margin:12px 0 0">{{ blog.excerpt[:130] }}...</p>
+            </div>
+          </article>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

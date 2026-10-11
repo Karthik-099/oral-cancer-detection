@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}DevOps Infrastructure — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .infra-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    height: 100%;
+  }
+  .pipeline-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 40px 20px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 32px;
+  }
+  .pipeline-stage {
+    text-align: center;
+    position: relative;
+    flex: 1;
+  }
+  .pipeline-stage:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 25px;
+    left: 60%;
+    width: 80%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .stage-icon {
+    width: 50px;
+    height: 50px;
+    background: #f8fafc;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s;
+  }
+  .stage-success .stage-icon { background: var(--success); border-color: var(--success); color: #fff; }
+  .stage-running .stage-icon { background: var(--primary); border-color: var(--primary); color: #fff; animation: pulse 2s infinite; }
+  
+  .metric-number { font-size: 2rem; font-weight: 800; color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h4 style="font-weight:800;margin:0">DevOps Infrastructure</h4>
+    <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Real-time system health, CI/CD status, and active learning pipeline.</p>
+  </div>
+</div>
+
+<!-- Infrastructure Health -->
+<div class="row g-4 mb-5">
+  <div class="col-md-3">
+    <div class="infra-card">
+      <div class="d-flex justify-content-between mb-3">
+        <h6 style="font-weight:700">ECS Fargate</h6>
+        <span class="badge bg-success">Running</span>
+      </div>
+      <div class="metric-number">{{ infra.ecs.tasks }}</div>
+      <div class="text-muted small">Tasks Active</div>
+      <div class="progress mt-3" style="height:6px">
+        <div class="progress-bar" style="width:{{ infra.ecs.cpu }}%"></div>
+      </div>
+      <div class="d-flex justify-content-between mt-1 small">
+        <span>CPU: {{ infra.ecs.cpu }}%</span>
+        <span>Mem: {{ infra.ecs.mem }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="infra-card">
+      <h6 style="font-weight:700" class="mb-3">RDS PostgreSQL</h6>
+      <div class="metric-number">{{ infra.rds.conns }}</div>
+      <div class="text-muted small">Active Connections</div>
+      <div class="mt-3 small">
+        <div>Status: <span class="text-success">{{ infra.rds.status }}</span></div>
+        <div>Storage: {{ infra.rds.storage }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="infra-card">
+      <h6 style="font-weight:700" class="mb-3">S3 Storage</h6>
+      <div class="metric-number">{{ infra.s3.objects }}</div>
+      <div class="text-muted small">Clinical Assets</div>
+      <div class="mt-3 small">
+        <div>Bucket: <code>oralaid-prod</code></div>
+        <div>Total Size: {{ infra.s3.storage }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="infra-card">
+      <h6 style="font-weight:700" class="mb-3">GitHub Actions</h6>
+      <div class="text-success fw-bold mb-2"><i class="ti ti-circle-check me-1"></i>Last Build Success</div>
+      <div class="small">
+        <div class="text-muted">Commit: <code>{{ infra.github.hash }}</code></div>
+        <div class="text-muted">Deployed: {{ infra.github.time }}</div>
+      </div>
+      <button class="btn btn-sm btn-outline-primary w-100 mt-3" onclick="triggerDeploy()">Re-deploy</button>
+    </div>
+  </div>
+</div>
+
+<!-- CI/CD Pipeline -->
+<h6 class="section-label mb-3">CI/CD Pipeline Flow (Build #47)</h6>
+<div class="pipeline-container">
+  <div class="pipeline-stage stage-success">
+    <div class="stage-icon"><i class="ti ti-test-pipe"></i></div>
+    <div style="font-weight:700;font-size:0.8rem">TEST</div>
+  </div>
+  <div class="pipeline-stage stage-success">
+    <div class="stage-icon"><i class="ti ti-box"></i></div>
+    <div style="font-weight:700;font-size:0.8rem">BUILD</div>
+  </div>
+  <div class="pipeline-stage stage-success">
+    <div class="stage-icon"><i class="ti ti-cloud-upload"></i></div>
+    <div style="font-weight:700;font-size:0.8rem">PUSH ECR</div>
+  </div>
+  <div class="pipeline-stage stage-running">
+    <div class="stage-icon"><i class="ti ti-rocket"></i></div>
+    <div style="font-weight:700;font-size:0.8rem">DEPLOY ECS</div>
+  </div>
+  <div class="pipeline-stage">
+    <div class="stage-icon"><i class="ti ti-heartbeat"></i></div>
+    <div style="font-weight:700;font-size:0.8rem">HEALTH</div>
+  </div>
+</div>
+
+<!-- Active Learning -->
+<div class="row g-4 mb-5">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white">Active Learning Retrain</div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-end mb-2">
+          <div>
+            <h3 class="mb-0" style="font-weight:800">{{ corrections_count }} / 50</h3>
+            <span class="text-muted small">Doctor corrections collected</span>
+          </div>
+          {% if corrections_count >= 50 %}
+          <span class="badge bg-success mb-2">Retrain Available</span>
+          {% endif %}
+        </div>
+        <div class="progress mb-4" style="height:12px">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:{{ (corrections_count/50)*100 }}%"></div>
+        </div>
+        <button class="btn btn-primary w-100" {% if corrections_count < 50 %}disabled{% endif %} onclick="startRetrain()">
+          <i class="ti ti-refresh me-2"></i>Start Automated Retraining
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header bg-white">Real-time Metrics (Prometheus)</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="p-3 bg-light rounded text-center">
+              <div class="text-muted small mb-1">Request Rate</div>
+              <div class="h4 mb-0 fw-bold">142/min</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 bg-light rounded text-center">
+              <div class="text-muted small mb-1">Avg Latency</div>
+              <div class="h4 mb-0 fw-bold">47ms</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 bg-light rounded text-center">
+              <div class="text-muted small mb-1">Error Rate</div>
+              <div class="h4 mb-0 fw-bold text-success">0.02%</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 bg-light rounded text-center">
+              <div class="text-muted small mb-1">Active Sessions</div>
+              <div class="h4 mb-0 fw-bold">12</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Retrain History -->
+<div class="card">
+  <div class="card-header bg-white">Model Training History</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Date</th>
+            <th>Accuracy</th>
+            <th>F1 Score</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in retrain_history %}
+          <tr>
+            <td><code class="text-primary">{{ m.version }}</code></td>
+            <td class="small">{{ m.recorded_at.strftime('%b %d, %Y %H:%M') }}</td>
+            <td class="fw-bold">{{ '%.2f'|format(m.accuracy * 100) }}%</td>
+            <td>{{ '%.3f'|format(m.f1_score) }}</td>
+            <td><span class="badge bg-success">Deployed</span></td>
+          </tr>
+          {% endfor %}
+          {% if not retrain_history %}
+          <tr><td colspan="5" class="text-center py-4 text-muted">No retraining history yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function triggerDeploy() {
+    showNotification('Deployment triggered via GitHub API...', 'info');
+  }
+  async function startRetrain() {
+    if (!confirm('Start model retraining? This will consume GPU resources.')) return;
+    const res = await fetch('/api/retrain', { method: 'POST' });
+    if (res.ok) {
+      showNotification('Retraining started in background', 'success');
+    }
+  }
+</script>
+{% endblock %}

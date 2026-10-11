@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="h" cx="72%" cy="45%" r="35%"><stop offset="0" stop-color="#F06240" stop-opacity=".9"/><stop offset=".5" stop-color="#F0B040" stop-opacity=".45"/><stop offset="1" stop-color="#0C6E63" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#FAFAF7"/>
+  <rect x="700" y="90" width="420" height="450" rx="28" fill="#EDEDE6"/>
+  <rect x="700" y="90" width="420" height="450" rx="28" fill="url(#h)"/>
+  <g transform="translate(80 110)">
+    <rect width="56" height="56" rx="16" fill="#0D111C"/>
+    <path d="M14 23c4 11.5 24 11.5 28 0" stroke="#FAFAF7" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="41" cy="16" r="4" fill="#0C6E63"/>
+    <text x="74" y="40" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="600" fill="#0D111C">OralAID</text>
+  </g>
+  <text x="80" y="300" font-family="Georgia, serif" font-size="76" fill="#0D111C">See what the</text>
+  <text x="80" y="385" font-family="Georgia, serif" font-size="76" font-style="italic" fill="#0C6E63">model sees.</text>
+  <text x="80" y="460" font-family="Inter, Arial, sans-serif" font-size="26" fill="#606775">Explainable AI for oral cancer screening</text>
+</svg>

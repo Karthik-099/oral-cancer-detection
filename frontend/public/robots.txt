@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /login
+Disallow: /register
+Disallow: /api/
+Disallow: /files/
+
+Sitemap: https://oralaid.ai/sitemap.xml

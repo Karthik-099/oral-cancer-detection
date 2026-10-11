@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Server Error — OralAID{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:60vh">
+  <div class="card" style="max-width:560px;width:100%">
+    <div class="card-body text-center p-5">
+      <span class="brand-mark mx-auto mb-4"><i class="ti ti-heartbeat"></i></span>
+      <div class="section-label">500 Error</div>
+      <h1 style="font-size:32px;font-weight:800;margin:10px 0">Clinical Workspace Interrupted</h1>
+      <p style="color:var(--text-secondary)">Something failed while processing this request. The application has rolled back the current database session.</p>
+      <a href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('index') }}" class="btn btn-primary mt-2">
+        <i class="ti ti-layout-dashboard me-2"></i>Return to Dashboard
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

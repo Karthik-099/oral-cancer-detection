@@ -1,0 +1,100 @@
+# OralAID server: API + web app in one container, Postgres private to Docker.
+#
+#   cp deploy/.env.example deploy/.env      # fill in the secrets
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+#
+# Postgres is on an internal-only Docker network: it publishes no ports, so
+# nothing outside this compose project (not the host, not the internet) can
+# reach it. Only the oralaid container talks to it.
+#
+# Sizing: the database holds case metadata only (images live in the
+# oralaid-data volume), so it stays small: roughly 1-2 KB per case,
+# i.e. ~100k cases in well under 1 GB.
+#
+# Model weights: put final_efficientnet_b4_oral_cancer.pth in ../models, or set
+# ORALAID_CLASSIFIER_URL (+ ORALAID_CLASSIFIER_SHA256) to fetch it on first start.
+
+services:
+  oralaid:
+    build: { context: .., dockerfile: deploy/Dockerfile }
+    image: oralaid:latest
+    restart: unless-stopped
+    ports: ["${ORALAID_PORT:-8000}:8000"]
+    environment:
+      ORALAID_SECRET_KEY: ${ORALAID_SECRET_KEY:?set ORALAID_SECRET_KEY}
+      ORALAID_CORS_ORIGINS: ${ORALAID_CORS_ORIGINS:-http://localhost:8000}
+      ORALAID_ADMIN_EMAIL: ${ORALAID_ADMIN_EMAIL:-}
+      ORALAID_ADMIN_PASSWORD: ${ORALAID_ADMIN_PASSWORD:-}
+      ORALAID_CLASSIFIER_URL: ${ORALAID_CLASSIFIER_URL:-}
+      ORALAID_CLASSIFIER_SHA256: ${ORALAID_CLASSIFIER_SHA256:-}
+      ORALAID_TORCH_THREADS: ${ORALAID_TORCH_THREADS:-2}
+      DATABASE_URL: postgresql://oralaid:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/oralaid
+    volumes:
+      - oralaid-data:/data
+      - ../models:/models:ro
+    networks: [public, backend]
+    depends_on:
+      db: { condition: service_healthy }
+    read_only: true
+    tmpfs: ["/tmp"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    mem_limit: 3g
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: oralaid
+      POSTGRES_USER: oralaid
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    # Small-footprint tuning: fine for a single clinic or small network.
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c effective_cache_size=192MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=30
+      -c wal_level=minimal -c max_wal_senders=0
+      -c max_wal_size=256MB
+      -c password_encryption=scram-sha-256
+    volumes: [oralaid-db:/var/lib/postgresql/data]
+    networks: [backend]          # internal only; no "ports:" on purpose
+    mem_limit: 512m
+    shm_size: 128m
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oralaid -d oralaid"]
+      interval: 5s
+      retries: 10
+    logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
+
+  # Nightly compressed dump, 7 days kept, inside Docker (no host directory).
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h db -U oralaid -d oralaid | gzip > /backups/oralaid-$$(date +%F).sql.gz;
+        find /backups -name "*.sql.gz" -mtime +7 -delete;
+        sleep 86400; done'
+    volumes: [oralaid-backups:/backups]
+    networks: [backend]
+    depends_on:
+      db: { condition: service_healthy }
+    mem_limit: 128m
+
+networks:
+  public: {}
+  backend:
+    internal: true               # no route to the outside world
+
+volumes:
+  oralaid-data:
+  oralaid-db:
+  oralaid-backups:

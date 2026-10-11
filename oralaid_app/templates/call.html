@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Video Consultation — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+    .call-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .call-card {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+    #call-frame {
+        width: 100%;
+        height: 600px;
+        background: #f8fafc;
+    }
+    .call-footer {
+        padding: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid var(--border);
+    }
+    .patient-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .patient-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="call-container">
+    <div class="mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <h4 style="font-weight:800;margin:0">Live Video Consultation</h4>
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Secure Clinical Telehealth Channel</p>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="ti ti-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <div class="call-card mb-4">
+        <div id="call-frame"></div>
+        <div class="call-footer">
+            <div class="patient-info">
+                <div class="patient-avatar">{{ appt.patient.name[:1]|upper }}</div>
+                <div>
+                    <h6 style="margin:0;font-weight:700">{{ appt.patient.name }}</h6>
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.8rem">
+                        {{ appt.type }} &middot; {{ appt.scheduled_date.strftime('%B %d, %H:%M') }}
+                    </p>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger" onclick="endCall()">
+                    <i class="ti ti-phone-off me-2"></i>End Call + Save Notes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/@daily-co/daily-js"></script>
+<script>
+    let callFrame;
+
+    window.onload = () => {
+        callFrame = DailyIframe.createFrame(document.getElementById('call-frame'), {
+            showLeaveButton: true,
+            showFullscreenButton: true,
+            iframeStyle: {
+                width: '100%',
+                height: '100%',
+                border: '0'
+            }
+        });
+
+        callFrame.join({ url: '{{ appt.room_url }}' });
+
+        callFrame.on('left-meeting', () => {
+            endCall();
+        });
+    };
+
+    async function endCall() {
+        if (callFrame) {
+            await callFrame.leave();
+        }
+        
+        // Update appointment status
+        try {
+            await fetch('/api/appointments/{{ appt.id }}', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Completed' })
+            });
+        } catch (e) {
+            console.error(e);
+        }
+        
+        window.location.href = "{{ url_for('dashboard') }}";
+    }
+</script>
+{% endblock %}

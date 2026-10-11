@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}Lab Contacts & AI Assistant - OralAID{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Lab Contacts Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-flask me-2"></i>Laboratory Contacts
+                </h5>
+                <div class="btn-group">
+                    <button class="btn btn-primary btn-sm" onclick="addNewLab()">
+                        <i class="fas fa-plus me-1"></i>Add Lab
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="exportContacts()">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Search and Filter -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search labs..." id="labSearch">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <select class="form-select" id="labTypeFilter" onchange="filterLabs()">
+                            <option value="">All Lab Types</option>
+                            <option value="pathology">Pathology</option>
+                            <option value="radiology">Radiology</option>
+                            <option value="blood_work">Blood Work</option>
+                            <option value="microbiology">Microbiology</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Lab Cards -->
+                <div class="row" id="labCards">
+                    {% for lab in labs %}
+                    <div class="col-md-6 mb-3 lab-card" data-type="{{ lab.lab_type }}">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">{{ lab.name }}</h6>
+                                    <span class="badge bg-primary">{{ lab.lab_type.title() }}</span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i>{{ lab.contact_person or 'N/A' }}
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-phone me-1"></i>{{ lab.phone }}
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-envelope me-1"></i>{{ lab.email }}
+                                    </small>
+                                </div>
+                                
+                                {% if lab.turnaround_time %}
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>TAT: {{ lab.turnaround_time }}
+                                    </small>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="btn-group w-100 mt-2">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="contactLab('{{ lab.id }}')">
+                                        <i class="fas fa-phone me-1"></i>Call
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="emailLab('{{ lab.id }}')">
+                                        <i class="fas fa-envelope me-1"></i>Email
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="viewLabDetails('{{ lab.id }}')">
+                                        <i class="fas fa-info me-1"></i>Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Demo Lab Cards -->
+                    <div class="col-md-6 mb-3 lab-card" data-type="pathology">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">Advanced Pathology Services</h6>
+                                    <span class="badge bg-danger">Pathology</span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i>Dr. Sarah Wilson
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-phone me-1"></i>(555) 123-4567
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-envelope me-1"></i>results@advancedpath.com
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>TAT: 3-5 business days
+                                    </small>
+                                </div>
+                                
+                                <div class="btn-group w-100 mt-2">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="contactLab('demo1')">
+                                        <i class="fas fa-phone me-1"></i>Call
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="emailLab('demo1')">
+                                        <i class="fas fa-envelope me-1"></i>Email
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="viewLabDetails('demo1')">
+                                        <i class="fas fa-info me-1"></i>Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3 lab-card" data-type="radiology">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">Metro Imaging Center</h6>
+                                    <span class="badge bg-info">Radiology</span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-user me-1"></i>Dr. Michael Chen
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-phone me-1"></i>(555) 987-6543
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-envelope me-1"></i>scheduling@metroimaging.com
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>TAT: Same day
+                                    </small>
+                                </div>
+                                
+                                <div class="btn-group w-100 mt-2">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="contactLab('demo2')">
+                                        <i class="fas fa-phone me-1"></i>Call
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="emailLab('demo2')">
+                                        <i class="fas fa-envelope me-1"></i>Email
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="viewLabDetails('demo2')">
+                                        <i class="fas fa-info me-1"></i>Details
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-primary w-100" onclick="orderBiopsy()">
+                            <i class="fas fa-microscope d-block mb-1"></i>
+                            Order Biopsy
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-success w-100" onclick="scheduleImaging()">
+                            <i class="fas fa-x-ray d-block mb-1"></i>
+                            Schedule Imaging
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-info w-100" onclick="requestBloodWork()">
+                            <i class="fas fa-tint d-block mb-1"></i>
+                            Blood Work
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-warning w-100" onclick="trackResults()">
+                            <i class="fas fa-search d-block mb-1"></i>
+                            Track Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- AI Assistant Bot -->
+        <div class="card h-100">
+            <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-robot me-2"></i>OralAID Assistant
+                </h5>
+                <small class="text-white opacity-75">Your AI-powered medical assistant</small>
+            </div>
+            
+            <div class="chat-messages" id="botMessages" style="height: 400px; overflow-y: auto; padding: 1rem;">
+                <div class="message">
+                    <div class="message-avatar bg-gradient" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                        <i class="fas fa-robot text-white"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text">
+                            Hello! I'm your OralAID Assistant. I can help you with:
+                            <ul class="mt-2 mb-0">
+                                <li>Finding the right lab for specific tests</li>
+                                <li>Lab contact information and services</li>
+                                <li>Test recommendations based on symptoms</li>
+                                <li>Turnaround times and scheduling</li>
+                                <li>Medical reference information</li>
+                            </ul>
+                            How can I assist you today?
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-footer">
+                <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Ask me anything..." id="botInput" onkeypress="handleBotKeyPress(event)">
+                    <button class="btn btn-primary" type="button" onclick="sendBotMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                
+                <!-- Quick Questions -->
+                <div class="mt-2">
+                    <small class="text-muted">Quick questions:</small><br>
+                    <button class="btn btn-outline-secondary btn-sm me-1 mb-1" onclick="askBot('Which lab is best for oral pathology?')">
+                        Best pathology lab?
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm me-1 mb-1" onclick="askBot('How long do biopsy results take?')">
+                        Biopsy turnaround?
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm me-1 mb-1" onclick="askBot('What tests for oral cancer screening?')">
+                        Cancer screening tests?
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lab Details Modal -->
+<div class="modal fade" id="labDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Laboratory Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="labDetailsContent">
+                <!-- Content will be populated dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="contactSelectedLab()">Contact Lab</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add New Lab Modal -->
+<div class="modal fade" id="addLabModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Laboratory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addLabForm">
+                    <div class="mb-3">
+                        <label class="form-label">Laboratory Name *</label>
+                        <input type="text" class="form-control" id="labName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Lab Type *</label>
+                        <select class="form-select" id="labType" required>
+                            <option value="">Select Type</option>
+                            <option value="pathology">Pathology</option>
+                            <option value="radiology">Radiology</option>
+                            <option value="blood_work">Blood Work</option>
+                            <option value="microbiology">Microbiology</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contact Person</label>
+                        <input type="text" class="form-control" id="labContactPerson">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="labPhone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="labEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Address</label>
+                        <textarea class="form-control" rows="2" id="labAddress"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Services Offered</label>
+                        <textarea class="form-control" rows="2" id="labServices" placeholder="List the services this lab provides..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Turnaround Time</label>
+                        <input type="text" class="form-control" id="labTurnaround" placeholder="e.g., 3-5 business days">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitNewLab()">Add Laboratory</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// AI Bot functionality
+function sendBotMessage() {
+    const input = document.getElementById('botInput');
+    const message = input.value.trim();
+    
+    if (message) {
+        // Display user message
+        displayBotMessage(message, 'user');
+        input.value = '';
+        
+        // Show typing indicator
+        showBotTyping();
+        
+        // Generate AI response
+        setTimeout(() => {
+            const response = generateBotResponse(message);
+            hideBotTyping();
+            displayBotMessage(response, 'bot');
+        }, 1500);
+    }
+}
+
+function handleBotKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendBotMessage();
+    }
+}
+
+function askBot(question) {
+    document.getElementById('botInput').value = question;
+    sendBotMessage();
+}
+
+function displayBotMessage(message, sender) {
+    const messagesContainer = document.getElementById('botMessages');
+    const isUser = sender === 'user';
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'own' : ''}`;
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar ${isUser ? 'bg-primary' : 'bg-gradient'}" ${!isUser ? 'style="background: linear-gradient(135deg, #667eea, #764ba2);"' : ''}>
+            ${isUser ? 'You' : '<i class="fas fa-robot text-white"></i>'}
+        </div>
+        <div class="message-content">
+            <div class="message-text">${message}</div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function showBotTyping() {
+    const messagesContainer = document.getElementById('botMessages');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message';
+    typingDiv.id = 'typingIndicator';
+    
+    typingDiv.innerHTML = `
+        <div class="message-avatar bg-gradient" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+            <i class="fas fa-robot text-white"></i>
+        </div>
+        <div class="message-content">
+            <div class="message-text">
+                <div class="typing-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function hideBotTyping() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
+function generateBotResponse(message) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Simple keyword-based responses
+    if (lowerMessage.includes('pathology') || lowerMessage.includes('biopsy')) {
+        return `For pathology services, I recommend <strong>Advanced Pathology Services</strong>. They specialize in oral pathology with a 3-5 day turnaround time. Dr. Sarah Wilson is their lead pathologist. Would you like me to help you contact them?`;
+    }
+    
+    if (lowerMessage.includes('radiology') || lowerMessage.includes('imaging') || lowerMessage.includes('x-ray')) {
+        return `<strong>Metro Imaging Center</strong> offers excellent radiology services with same-day results. They have advanced CT and MRI capabilities. Dr. Michael Chen leads their oral imaging department. Shall I provide their contact information?`;
+    }
+    
+    if (lowerMessage.includes('blood') || lowerMessage.includes('lab work')) {
+        return `For blood work and general lab tests, <strong>QuickTest Laboratory</strong> provides comprehensive services with 24-48 hour turnaround times. They offer CBC, metabolic panels, and tumor markers. Would you like their contact details?`;
+    }
+    
+    if (lowerMessage.includes('turnaround') || lowerMessage.includes('time') || lowerMessage.includes('how long')) {
+        return `Typical turnaround times vary by test type:
+        <ul>
+        <li><strong>Pathology/Biopsy:</strong> 3-5 business days</li>
+        <li><strong>Blood work:</strong> 24-48 hours</li>
+        <li><strong>Imaging:</strong> Same day to 24 hours</li>
+        <li><strong>Microbiology:</strong> 2-7 days depending on culture</li>
+        </ul>
+        Need help with a specific test?`;
+    }
+    
+    if (lowerMessage.includes('cancer') || lowerMessage.includes('screening')) {
+        return `For oral cancer screening, I recommend:
+        <ul>
+        <li><strong>Biopsy:</strong> Gold standard for definitive diagnosis</li>
+        <li><strong>CT/MRI:</strong> For staging and extent evaluation</li>
+        <li><strong>Blood markers:</strong> CEA, SCC antigen</li>
+        <li><strong>HPV testing:</strong> For risk assessment</li>
+        </ul>
+        Would you like me to help you find the right lab for these tests?`;
+    }
+    
+    if (lowerMessage.includes('contact') || lowerMessage.includes('phone') || lowerMessage.includes('email')) {
+        return `I can help you contact any of our partner labs. Here are the main contacts:
+        <ul>
+        <li><strong>Advanced Pathology:</strong> (555) 123-4567</li>
+        <li><strong>Metro Imaging:</strong> (555) 987-6543</li>
+        <li><strong>QuickTest Lab:</strong> (555) 555-0123</li>
+        </ul>
+        Which lab would you like to contact?`;
+    }
+    
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('help')) {
+        return `Hello! I'm here to help you with laboratory services and medical information. I can assist with:
+        <ul>
+        <li>Finding the right lab for specific tests</li>
+        <li>Providing contact information</li>
+        <li>Explaining test procedures and timelines</li>
+        <li>Medical reference information</li>
+        </ul>
+        What would you like to know?`;
+    }
+    
+    // Default response
+    return `I understand you're asking about "${message}". While I don't have specific information about that topic, I can help you with:
+    <ul>
+    <li>Laboratory contact information</li>
+    <li>Test recommendations</li>
+    <li>Turnaround times</li>
+    <li>General medical information</li>
+    </ul>
+    Could you please rephrase your question or ask about one of these topics?`;
+}
+
+// Lab management functions
+function filterLabs() {
+    const filter = document.getElementById('labTypeFilter').value;
+    const cards = document.querySelectorAll('.lab-card');
+    
+    cards.forEach(card => {
+        if (filter === '' || card.dataset.type === filter) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function contactLab(labId) {
+    showNotification('Initiating call to laboratory...', 'info');
+    // In real implementation, this would integrate with phone system
+}
+
+function emailLab(labId) {
+    showNotification('Opening email client...', 'info');
+    // In real implementation, this would open email with pre-filled template
+}
+
+function viewLabDetails(labId) {
+    // Mock lab details
+    const labDetails = {
+        'demo1': {
+            name: 'Advanced Pathology Services',
+            type: 'Pathology',
+            contact: 'Dr. Sarah Wilson',
+            phone: '(555) 123-4567',
+            email: 'results@advancedpath.com',
+            address: '123 Medical Center Dr, Suite 200, City, State 12345',
+            services: ['Oral Pathology', 'Histopathology', 'Immunohistochemistry', 'Molecular Diagnostics'],
+            turnaround: '3-5 business days',
+            specialties: ['Oral Cancer Diagnosis', 'Precancerous Lesions', 'Inflammatory Conditions']
+        }
+    };
+    
+    const lab = labDetails[labId] || {
+        name: 'Laboratory Details',
+        type: 'General',
+        contact: 'Contact Person',
+        phone: 'Phone Number',
+        email: 'Email Address',
+        address: 'Address',
+        services: ['General Services'],
+        turnaround: 'Standard',
+        specialties: ['General Diagnostics']
+    };
+    
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Contact Information</h6>
+                <p><strong>Contact Person:</strong> ${lab.contact}</p>
+                <p><strong>Phone:</strong> ${lab.phone}</p>
+                <p><strong>Email:</strong> ${lab.email}</p>
+                <p><strong>Address:</strong> ${lab.address}</p>
+            </div>
+            <div class="col-md-6">
+                <h6>Service Information</h6>
+                <p><strong>Lab Type:</strong> ${lab.type}</p>
+                <p><strong>Turnaround Time:</strong> ${lab.turnaround}</p>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h6>Services Offered</h6>
+                <ul>
+                    ${lab.services.map(service => `<li>${service}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Specialties</h6>
+                <ul>
+                    ${lab.specialties.map(specialty => `<li>${specialty}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('labDetailsContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('labDetailsModal')).show();
+}
+
+function addNewLab() {
+    new bootstrap.Modal(document.getElementById('addLabModal')).show();
+}
+
+function submitNewLab() {
+    const labData = {
+        name: document.getElementById('labName').value,
+        type: document.getElementById('labType').value,
+        contact: document.getElementById('labContactPerson').value,
+        phone: document.getElementById('labPhone').value,
+        email: document.getElementById('labEmail').value,
+        address: document.getElementById('labAddress').value,
+        services: document.getElementById('labServices').value,
+        turnaround: document.getElementById('labTurnaround').value
+    };
+    
+    if (!labData.name || !labData.type || !labData.phone || !labData.email) {
+        showNotification('Please fill in all required fields', 'warning');
+        return;
+    }
+    
+    showNotification('Laboratory added successfully!', 'success');
+    bootstrap.Modal.getInstance(document.getElementById('addLabModal')).hide();
+    document.getElementById('addLabForm').reset();
+}
+
+// Quick action functions
+function orderBiopsy() {
+    askBot('I need to order a biopsy. Which pathology lab do you recommend?');
+}
+
+function scheduleImaging() {
+    askBot('I need to schedule imaging for a patient. What are my options?');
+}
+
+function requestBloodWork() {
+    askBot('I need blood work for oral cancer markers. Which lab should I use?');
+}
+
+function trackResults() {
+    showNotification('Result tracking system coming soon!', 'info');
+}
+
+function exportContacts() {
+    showNotification('Exporting lab contacts...', 'info');
+}
+
+function contactSelectedLab() {
+    showNotification('Contacting selected laboratory...', 'info');
+}
+
+// Search functionality
+document.getElementById('labSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const cards = document.querySelectorAll('.lab-card');
+    
+    cards.forEach(card => {
+        const labName = card.querySelector('.card-title').textContent.toLowerCase();
+        if (labName.includes(searchTerm)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Add CSS for typing animation
+const style = document.createElement('style');
+style.textContent = `
+    .typing-dots {
+        display: inline-block;
+    }
+    
+    .typing-dots span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #999;
+        margin: 0 2px;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

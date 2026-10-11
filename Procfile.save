@@ -1,0 +1,1 @@
+web: cd src/data_processing/tool_withpolygon/modularize_tool && streamlit run app.py --server.port $PORT --server.enableCORS false

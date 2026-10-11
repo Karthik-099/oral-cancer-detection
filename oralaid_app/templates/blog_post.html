@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+.blog-content h3 { font-family:'Space Grotesk',sans-serif; font-weight:700; color:var(--text); margin:28px 0 12px; font-size:1.2rem; }
+.blog-content p  { color:var(--text-muted); line-height:1.8; margin-bottom:16px; font-size:0.95rem; }
+.blog-content ul { color:var(--text-muted); line-height:1.8; padding-left:20px; margin-bottom:16px; }
+.blog-content li { margin-bottom:6px; }
+.blog-content strong { color:var(--text); }
+.blog-hero { width:100%; height:360px; object-fit:cover; border-radius:var(--radius); margin-bottom:32px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:860px">
+
+  <a href="{{ url_for('blogs') }}" style="color:var(--text-muted);font-size:0.88rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;margin-bottom:24px">
+    <i class="fas fa-arrow-left"></i> Back to Blogs
+  </a>
+
+  <div class="fade-up">
+    <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+      <span style="background:rgba(99,102,241,0.15);color:var(--primary);border:1px solid rgba(99,102,241,0.2);border-radius:50px;padding:4px 14px;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em">
+        {{ post.category }}
+      </span>
+      <span style="color:var(--text-muted);font-size:0.82rem"><i class="fas fa-clock me-1"></i>{{ post.read_time }} read</span>
+      <span style="color:var(--text-muted);font-size:0.82rem"><i class="fas fa-calendar me-1"></i>{{ post.date }}</span>
+    </div>
+
+    <h1 style="font-family:'Space Grotesk',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);font-weight:800;line-height:1.2;margin-bottom:12px">
+      {{ post.title }}
+    </h1>
+    <p style="color:var(--text-muted);font-size:1.05rem;margin-bottom:28px">{{ post.subtitle }}</p>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:50%;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-user" style="color:#fff;font-size:0.9rem"></i>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:0.9rem">{{ post.author }}</div>
+        <div style="color:var(--text-muted);font-size:0.78rem">OralAID Research</div>
+      </div>
+    </div>
+
+    <img src="{{ post.image }}" alt="{{ post.title }}" class="blog-hero" loading="lazy">
+
+    <div class="blog-content">
+      {{ post.content | safe }}
+    </div>
+  </div>
+
+  <!-- Related posts -->
+  <div style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(255,255,255,0.08)">
+    <h5 style="font-family:'Space Grotesk',sans-serif;font-weight:700;margin-bottom:20px">More Articles</h5>
+    <div class="row g-3">
+      {% for b in blogs if b.slug != post.slug %}{% if loop.index <= 3 %}
+      <div class="col-md-4">
+        <a href="{{ url_for('blog_post', slug=b.slug) }}" style="text-decoration:none">
+          <div class="card" style="padding:16px">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">{{ b.category }}</div>
+            <div style="font-weight:600;font-size:0.88rem;line-height:1.4;color:var(--text)">{{ b.title }}</div>
+            <div style="color:var(--text-muted);font-size:0.78rem;margin-top:8px">{{ b.read_time }} · {{ b.date }}</div>
+          </div>
+        </a>
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

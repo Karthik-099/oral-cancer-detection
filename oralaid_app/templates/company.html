@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ page.title }} — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .company-hero {
+    background:
+      radial-gradient(circle at 80% 10%, rgba(55,138,221,0.18), transparent 34%),
+      linear-gradient(180deg, #ffffff 0%, #f3f9ff 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 88px 0 72px;
+  }
+  .company-title {
+    max-width: 820px;
+    font-size: clamp(2.4rem, 6vw, 4.8rem);
+    font-weight: 800;
+    line-height: 0.98;
+    margin: 14px 0 18px;
+  }
+  .company-summary {
+    max-width: 760px;
+    color: var(--text-secondary);
+    font-size: 1.16rem;
+  }
+  .company-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .company-panel {
+    min-height: 230px;
+    padding: 26px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  .company-panel h3 {
+    margin: 0 0 12px;
+    font-size: 1.2rem;
+    font-weight: 800;
+  }
+  .company-panel p {
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  @media (max-width: 991.98px) {
+    .company-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="company-hero">
+  <div class="container">
+    <div class="section-label">{{ page.eyebrow }}</div>
+    <h1 class="company-title gradient-text">{{ page.title }}</h1>
+    <p class="company-summary">{{ page.summary }}</p>
+    <div class="d-flex flex-wrap gap-3 mt-4">
+      <a href="{{ url_for('demo_booking') }}" class="btn btn-primary btn-lg">Book Enterprise Demo</a>
+      <a href="{{ url_for('pricing') }}" class="btn btn-outline-primary btn-lg">View Plans</a>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="container">
+    <div class="company-grid">
+      {% for title, body in page.sections %}
+      <article class="company-panel reveal-on-scroll">
+        <div class="section-label mb-3">OralAID</div>
+        <h3>{{ title }}</h3>
+        <p>{{ body }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

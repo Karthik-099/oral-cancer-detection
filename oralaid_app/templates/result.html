@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+{% block title %}Analysis Result — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .result-tab-content {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow);
+  }
+  .viewer-img {
+    width: 100%;
+    display: block;
+    border-radius: 12px;
+  }
+  .diagnosis-class {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+  .confidence-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .confidence-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+  }
+  .risk-factor-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .risk-factor-pill i {
+    color: var(--success);
+  }
+  .recommendation-box {
+    background: #f0f7ff;
+    border-left: 4px solid var(--primary);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+  }
+  .annotation-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: crosshair;
+  }
+  .avatar-circle {
+    width: 48px;
+    height: 48px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if diagnosis.ai_prediction in ['Speckled Leukoplakia', 'Erythroplakia', 'Squamous Cell Carcinoma'] %}
+<div class="alert alert-danger mb-4 d-flex align-items-center gap-3" style="border-radius:12px;border:none;background:rgba(226,75,74,0.1);color:var(--danger)">
+  <i class="ti ti-alert-triangle" style="font-size:1.5rem"></i>
+  <div>
+    <h6 style="margin:0;font-weight:800">Critical: High-Risk Lesion Detected</h6>
+    <p style="margin:0;font-size:0.85rem">A follow-up appointment has been automatically scheduled for 28 days from today. <a href="{{ url_for('schedule') }}" style="color:var(--danger);font-weight:700">View in Schedule</a></p>
+  </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <div>
+      <h4 style="font-weight:800;margin:0">Analysis Summary</h4>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Diagnosis ID: {{ diagnosis.diagnosis_id[:8] }} &middot; {{ diagnosis.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if upcoming_appt and upcoming_appt.type == 'Video Consultation' %}
+      <a href="{{ url_for('video_call', appointment_id=upcoming_appt.id) }}" class="btn btn-success">
+        <i class="ti ti-video me-2"></i>Join Video Call
+      </a>
+      {% endif %}
+      <a href="{{ url_for('report_pdf', diagnosis_id=diagnosis.diagnosis_id) }}" class="btn btn-primary">
+        <i class="ti ti-file-text me-2"></i>Download PDF Report
+      </a>
+      <button class="btn btn-outline-primary" onclick="showNotification('Consultation booking coming soon!', 'info')">
+        <i class="ti ti-video me-2"></i>Book Video Consultation
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Left Column: Visualizations -->
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center bg-white">
+        <ul class="nav nav-pills" id="xaiTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#original">Original</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#gradcam">GradCAM</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#segmentation">Segmentation</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#lime">LIME</button>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body p-0">
+        <div class="tab-content result-tab-content">
+          <div class="tab-pane fade show active" id="original">
+            <div style="position:relative">
+              <img src="{{ url_for('uploaded_file', filename=diagnosis.image_path) }}" class="viewer-img" id="baseImg" loading="lazy">
+              <canvas id="annotationCanvas" class="annotation-canvas"></canvas>
+            </div>
+            <div class="p-3 bg-light border-top d-flex justify-content-between align-items-center">
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary" onclick="setAnnotTool('rect')"><i class="ti ti-square me-1"></i>Rectangle</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="setAnnotTool('poly')"><i class="ti ti-polygon me-1"></i>Polygon</button>
+                <button class="btn btn-sm btn-outline-danger" onclick="clearAnnot()"><i class="ti ti-trash me-1"></i>Clear</button>
+              </div>
+              <button class="btn btn-sm btn-success" onclick="saveAnnotation()">Save Annotations</button>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="gradcam">
+            {% if diagnosis.gradcam_path %}
+            <img src="{{ url_for('static', filename='results/' + diagnosis.gradcam_path) }}" class="viewer-img" loading="lazy">
+            <div class="p-3 text-center text-muted" style="font-size:0.8rem">
+              <strong>GradCAM Explanation:</strong> The heatmap highlights regions the model focused on. Red/Yellow indicates high attention.
+            </div>
+            {% else %}
+            <div class="p-5 text-center text-muted">GradCAM heatmap not available.</div>
+            {% endif %}
+          </div>
+          <div class="tab-pane fade" id="segmentation">
+            {% if diagnosis.segmentation_path %}
+            <img src="{{ url_for('static', filename='results/' + diagnosis.segmentation_path) }}" class="viewer-img" loading="lazy">
+            <div class="p-3 text-center text-muted" style="font-size:0.8rem">
+              <strong>U-Net Segmentation:</strong> Binary mask identifying suspected lesion boundaries.
+            </div>
+            {% else %}
+            <div class="p-5 text-center text-muted">Segmentation mask not available.</div>
+            {% endif %}
+          </div>
+          <div class="tab-pane fade" id="lime">
+            {% if diagnosis.lime_path %}
+            <img src="{{ url_for('static', filename='results/' + diagnosis.lime_path) }}" class="viewer-img" loading="lazy">
+            <div class="p-3 text-center text-muted" style="font-size:0.8rem">
+              <strong>LIME Explanation:</strong> Green superpixels contributed positively to the classification of <strong>{{ diagnosis.ai_prediction }}</strong>.
+            </div>
+            {% else %}
+            <div class="p-5 text-center text-muted">LIME explanation not available.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Diagnosis & Risk -->
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="avatar-circle">{{ patient.name[:1]|upper }}</div>
+          <div>
+            <h5 style="margin:0;font-weight:700">{{ patient.name }}</h5>
+            <p style="margin:0;color:var(--text-secondary);font-size:0.85rem">{{ patient.age }}y &middot; {{ patient.gender }}</p>
+          </div>
+        </div>
+
+        <div class="confidence-label">Diagnosis Prediction</div>
+        <h1 class="diagnosis-class">{{ diagnosis.ai_prediction }}</h1>
+        
+        <div class="mb-4 d-flex gap-3 align-items-center">
+          <span class="badge 
+            {% if diagnosis.risk_level == 'High-risk' %}badge-risk-high
+            {% elif diagnosis.risk_level == 'Medium-risk' %}badge-risk-medium
+            {% else %}badge-risk-low{% endif %} 
+            px-3 py-2" style="font-size:0.9rem">
+            {{ diagnosis.risk_level }}
+          </span>
+          <a href="{{ url_for('progression_view', patient_id=patient.id) }}" class="btn btn-sm btn-outline-primary" style="border-radius:999px;font-size:0.75rem;font-weight:700">
+            <i class="ti ti-chart-line me-1"></i>View Progression
+          </a>
+        </div>
+
+        <div class="row mb-4">
+          <div class="col-6">
+            <div class="confidence-label">Model Confidence</div>
+            <div class="confidence-value mb-2">{{ "%.1f"|format(confidence) }}%</div>
+            <div class="progress" style="height:8px">
+              <div class="progress-bar" id="confidenceBar" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="col-6 text-center">
+            <div class="confidence-label">Severity Score</div>
+            <div style="position:relative;width:80px;height:40px;margin:0 auto">
+              <svg viewBox="0 0 100 50" style="width:100%;height:100%">
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="#f1f5f9" stroke-width="12" />
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" 
+                  stroke="{% if (diagnosis.severity_score or 0) >= 7 %}#E24B4A{% elif (diagnosis.severity_score or 0) >= 4 %}#BA7517{% else %}#1D9E75{% endif %}" 
+                  stroke-width="12" 
+                  stroke-dasharray="{{ ((diagnosis.severity_score or 0) / 10) * 125.6 }} 125.6" />
+              </svg>
+              <div style="position:absolute;bottom:0;left:0;right:0;font-weight:800;font-size:1.1rem;color:var(--primary)">{{ '%.1f'|format(diagnosis.severity_score or 0) }}</div>
+            </div>
+            <div style="font-size:0.65rem;font-weight:700;margin-top:4px" class="text-uppercase 
+              {% if (diagnosis.severity_score or 0) >= 7 %}text-danger{% elif (diagnosis.severity_score or 0) >= 4 %}text-warning{% else %}text-success{% endif %}">
+              Severity: {{ '%.1f'|format(diagnosis.severity_score or 0) }} / 10 —
+              {% if (diagnosis.severity_score or 0) >= 7 %}High{% elif (diagnosis.severity_score or 0) >= 4 %}Moderate{% else %}Low{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <span class="section-label">Contributing Risk Factors</span>
+          {% if patient.tobacco_use %}
+          <div class="risk-factor-pill"><i class="ti ti-check"></i>Tobacco Use</div>
+          {% endif %}
+          {% if patient.alcohol_use %}
+          <div class="risk-factor-pill"><i class="ti ti-check"></i>Alcohol Use</div>
+          {% endif %}
+          {% if patient.family_history %}
+          <div class="risk-factor-pill"><i class="ti ti-check"></i>Family History</div>
+          {% endif %}
+          {% if patient.age and patient.age > 40 %}
+          <div class="risk-factor-pill"><i class="ti ti-check"></i>Age &gt; 40 years</div>
+          {% endif %}
+        </div>
+
+        <div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic">
+          Confirmed by EfficientNet-B4 + MobileViT ensemble.
+        </div>
+      </div>
+    </div>
+
+    <div class="recommendation-box mb-4">
+      <h6 style="font-weight:800;color:var(--primary);margin-bottom:12px">
+        <i class="ti ti-stethoscope me-2"></i>WHO Clinical Recommendations
+      </h6>
+      <ul style="margin:0;padding-left:20px;font-size:0.9rem;color:var(--primary-dark)">
+        {% for rec in recommendations %}
+        <li class="mb-2">{{ rec }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Feedback -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <span class="section-label">Doctor Verification</span>
+        <div class="d-flex gap-2 mb-3">
+          <button class="btn btn-outline-success flex-grow-1" onclick="submitFeedback('correct')">
+            <i class="ti ti-thumb-up me-2"></i>Correct
+          </button>
+          <button class="btn btn-outline-danger flex-grow-1" onclick="showCorrection()">
+            <i class="ti ti-thumb-down me-2"></i>Incorrect
+          </button>
+        </div>
+        
+        <div id="correctionPanel" style="display:none">
+          <label class="form-label">Correct Classification</label>
+          <select class="form-select mb-3" id="correctClass">
+            {% for name in class_names %}
+            <option value="{{ name }}" {% if name == diagnosis.ai_prediction %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-primary w-100" onclick="submitFeedback('incorrect')">Save Correction</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Confidence Bar Animation
+  window.onload = () => {
+    setTimeout(() => {
+      document.getElementById('confidenceBar').style.width = '{{ confidence }}%';
+    }, 300);
+    initAnnotation();
+  };
+
+  function showCorrection() {
+    document.getElementById('correctionPanel').style.display = 'block';
+  }
+
+  async function submitFeedback(fb) {
+    const correctedLabel = document.getElementById('correctClass').value;
+    const formData = new FormData();
+    formData.append('feedback', fb);
+    formData.append('corrected_label', fb === 'incorrect' ? correctedLabel : '');
+    
+    try {
+      await fetch('/feedback/{{ diagnosis.diagnosis_id }}', {
+        method: 'POST',
+        body: formData
+      });
+      showNotification('Feedback saved successfully', 'success');
+    } catch (err) {
+      showNotification('Error saving feedback', 'danger');
+    }
+  }
+
+  // Annotation Logic
+  let canvas, ctx, img;
+  let tool = 'rect';
+  let shapes = [];
+  let isDrawing = false;
+  let startX, startY;
+
+  function initAnnotation() {
+    canvas = document.getElementById('annotationCanvas');
+    ctx = canvas.getContext('2d');
+    img = document.getElementById('baseImg');
+    
+    // Resize canvas to match image display size
+    const resize = () => {
+      canvas.width = img.clientWidth;
+      canvas.height = img.clientHeight;
+      drawShapes();
+    };
+    
+    if (img.complete) resize();
+    else img.onload = resize;
+    window.onresize = resize;
+
+    canvas.onmousedown = (e) => {
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      if (tool === 'poly') {
+        if (shapes.length === 0 || shapes[shapes.length-1].complete) {
+          shapes.push({type: 'poly', points: [{x: startX, y: startY}], complete: false});
+        } else {
+          shapes[shapes.length-1].points.push({x: startX, y: startY});
+        }
+      }
+    };
+
+    canvas.onmousemove = (e) => {
+      if (!isDrawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const currX = e.clientX - rect.left;
+      const currY = e.clientY - rect.top;
+      
+      drawShapes();
+      
+      if (tool === 'rect') {
+        ctx.strokeStyle = '#0e6db4';
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(startX, startY, currX - startX, currY - startY);
+      }
+    };
+
+    canvas.onmouseup = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+      
+      if (tool === 'rect' && isDrawing) {
+        shapes.push({type: 'rect', x: startX, y: startY, w: endX - startX, h: endY - startY});
+      }
+      isDrawing = false;
+      drawShapes();
+    };
+
+    canvas.ondblclick = () => {
+      if (tool === 'poly' && shapes.length > 0) {
+        shapes[shapes.length-1].complete = true;
+        drawShapes();
+      }
+    };
+  }
+
+  function setAnnotTool(t) { tool = t; }
+
+  function clearAnnot() { shapes = []; drawShapes(); }
+
+  function drawShapes() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    shapes.forEach(s => {
+      ctx.strokeStyle = '#0e6db4';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      if (s.type === 'rect') {
+        ctx.strokeRect(s.x, s.y, s.w, s.h);
+      } else if (s.type === 'poly') {
+        ctx.beginPath();
+        ctx.moveTo(s.points[0].x, s.points[0].y);
+        s.points.forEach(p => ctx.lineTo(p.x, p.y));
+        if (s.complete) ctx.closePath();
+        ctx.stroke();
+      }
+    });
+  }
+
+  async function saveAnnotation() {
+    try {
+      const response = await fetch('/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          diagnosis_id: '{{ diagnosis.diagnosis_id }}',
+          shapes: shapes,
+          canvasWidth: canvas.width,
+          canvasHeight: canvas.height
+        })
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        showNotification('Annotations saved successfully', 'success');
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+    } catch (err) {
+      showNotification('Error saving annotations: ' + err.message, 'danger');
+    }
+  }
+</script>
+{% endblock %}

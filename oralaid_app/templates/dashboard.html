@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .dashboard-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    position: relative;
+    min-height: 148px;
+    padding: 22px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  .metric-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+  }
+
+  .metric-value {
+    margin-top: 12px;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .metric-label {
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .trend.up { color: var(--success); }
+  .trend.down { color: var(--danger); }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 30%);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .activity-list {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .activity-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    color: var(--primary);
+    background: var(--primary-light);
+    border-radius: 999px;
+  }
+
+  .activity-title {
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .activity-time {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 1199.98px) {
+    .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 575.98px) {
+    .dashboard-header { flex-direction: column; }
+    .metrics-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <div class="section-label">Clinical Dashboard</div>
+    <h1>Welcome back, {{ current_user.full_name or current_user.username }}</h1>
+    <p class="mb-0" style="color:var(--text-secondary)">
+      {{ now.strftime('%A, %B %d, %Y') if now else '' }} · OralAID screening overview
+    </p>
+  </div>
+  <a href="{{ url_for('diagnose') }}" class="btn btn-primary">
+    <i class="ti ti-plus me-2"></i>New Diagnosis
+  </a>
+</div>
+
+<section class="metrics-grid" aria-label="Dashboard metrics">
+  {% set stats = [
+    (total_patients, 'Total Patients', 'up', '12% this month'),
+    (total_diagnoses, 'Total Diagnoses', 'up', '18% this month'),
+    (high_risk_count, 'High Risk Cases', 'down', '3 pending review'),
+    ('%.1f%%'|format(accuracy_rate), 'Accuracy Rate', 'up', 'Validated checkpoint')
+  ] %}
+  {% for value, label, direction, trend in stats %}
+  <article class="metric-card">
+    <div class="metric-label">{{ label }}</div>
+    <div class="metric-value gradient-text" data-count-value="{{ value }}">{{ value }}</div>
+    <div class="trend {{ direction }}">
+      {% if direction == 'up' %}↑{% else %}↓{% endif %}
+      <span>{{ trend }}</span>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<div class="dashboard-grid">
+  <section class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Recent Diagnoses</span>
+      <span class="section-label">Last 20 Records</span>
+    </div>
+    <div class="card-body p-0">
+      {% if recent_diagnoses %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Patient Name</th>
+              <th>Date</th>
+              <th>Lesion Class</th>
+              <th>Risk Level</th>
+              <th>Confidence</th>
+              <th>Doctor Verified</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in recent_diagnoses %}
+            <tr>
+              <td>
+                <div style="font-weight:700">{{ d.patient.name }}</div>
+                <div style="color:var(--text-secondary);font-size:0.8rem">{{ d.patient.patient_id }}</div>
+              </td>
+              <td style="color:var(--text-secondary);font-size:0.88rem">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+              <td style="font-weight:600">{{ d.ai_prediction }}</td>
+              <td>
+                <span class="badge badge-risk-{% if d.risk_level=='High-risk' %}high{% elif d.risk_level=='Medium-risk' %}medium{% else %}low{% endif %}">
+                  {{ d.risk_level }}
+                </span>
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:10px;min-width:130px">
+                  <div class="progress" style="width:72px;height:7px">
+                    <div class="progress-bar" style="width:{{ ((d.ai_confidence or 0) * 100)|round }}%"></div>
+                  </div>
+                  <span style="color:var(--text-secondary);font-weight:700;font-size:0.84rem">{{ '%.0f'|format((d.ai_confidence or 0) * 100) }}%</span>
+                </div>
+              </td>
+              <td>
+                {% if d.doctor_feedback == 'correct' %}
+                  <span class="verified" style="color:var(--success)"><i class="ti ti-circle-check"></i>Verified</span>
+                {% elif d.doctor_feedback == 'incorrect' %}
+                  <span class="verified" style="color:var(--danger)"><i class="ti ti-circle-x"></i>Needs correction</span>
+                {% else %}
+                  <span class="verified" style="color:var(--warning)"><i class="ti ti-clock"></i>Pending</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <a href="{{ url_for('result', diagnosis_id=d.diagnosis_id) }}" style="font-weight:700">View Result</a>
+                  <a class="icon-button" href="{{ url_for('report_pdf', diagnosis_id=d.diagnosis_id) }}" title="Download report" aria-label="Download report">
+                    <i class="ti ti-file-download"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="ti ti-stethoscope" style="font-size:3rem;color:var(--primary);opacity:0.28"></i>
+        <h5 class="mt-3">No diagnoses yet</h5>
+        <p style="color:var(--text-secondary)">Create the first AI-assisted screening record.</p>
+        <a href="{{ url_for('diagnose') }}" class="btn btn-primary">Create Diagnosis</a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <aside>
+    {% if high_risk_alerts %}
+    <section class="card mb-4" style="border-color:var(--danger)">
+      <div class="card-header bg-danger text-white">High Risk Alerts</div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+          {% for alert in high_risk_alerts %}
+          <div class="list-group-item p-3">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h6 style="margin:0;font-weight:700">{{ alert.patient_name }}</h6>
+                <div style="font-size:0.75rem;color:var(--danger)">{{ alert.prediction }} &middot; {{ alert.diagnosis_date.strftime('%b %d') }}</div>
+              </div>
+              <a href="{{ url_for('schedule') }}" class="btn btn-sm btn-outline-danger">Schedule Now</a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="card mb-4">
+      <div class="card-header">Class Distribution</div>
+      <div class="card-body">
+        <canvas id="classDistributionChart" height="240"></canvas>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">Recent Activity</div>
+      <div class="card-body">
+        {% if recent_diagnoses %}
+        <ul class="activity-list">
+          {% for d in recent_diagnoses[:5] %}
+          <li class="activity-item">
+            <span class="activity-icon"><i class="ti ti-file-analytics"></i></span>
+            <div>
+              <div class="activity-title">{{ d.patient.name }} screened</div>
+              <div class="activity-time">{{ d.ai_prediction }} · {{ d.created_at.strftime('%b %d, %H:%M') }}</div>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mb-0" style="color:var(--text-secondary)">No activity yet.</p>
+        {% endif %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const distribution = {{ class_distribution|tojson }};
+  const filtered = distribution.filter((item) => item.count > 0);
+  const labels = filtered.length ? filtered.map((item) => item.name) : ['No records'];
+  const values = filtered.length ? filtered.map((item) => item.count) : [1];
+
+  new Chart(document.getElementById('classDistributionChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: ['#0e6db4', '#378ADD', '#1D9E75', '#BA7517', '#E24B4A', '#8fc6ef', '#7ab99e', '#d8a85b'],
+        borderColor: '#ffffff',
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#4a6080', boxWidth: 10, usePointStyle: true }
+        }
+      }
+    }
+  });
+
+  document.querySelectorAll('.metric-value[data-count-value]').forEach((el) => {
+    const raw = el.dataset.countValue || el.textContent;
+    const number = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
+    const suffix = raw.includes('%') ? '%' : '';
+    const decimals = raw.includes('.') ? 1 : 0;
+    const start = performance.now();
+    const duration = 800;
+
+    function tick(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = (number * eased).toFixed(decimals) + suffix;
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  });
+</script>
+{% endblock %}

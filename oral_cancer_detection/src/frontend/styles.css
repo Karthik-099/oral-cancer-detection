@@ -1,0 +1,5 @@
+body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }
+h1 { color: #333; }
+form { margin: 20px 0; }
+input, button { padding: 10px; margin: 5px; }
+#result { margin-top: 20px; padding: 15px; background: #f0f0f0; }

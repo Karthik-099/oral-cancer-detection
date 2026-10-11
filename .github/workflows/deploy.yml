@@ -1,0 +1,88 @@
+name: Deploy
+
+# Production deploys run only from the "prod" branch, after CI and security pass.
+# Required repository secrets:
+#   NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID   web app (Netlify)
+#   RENDER_DEPLOY_HOOK_URL                backend (optional; or use Render auto-deploy)
+#   PRODUCTION_URL                        e.g. https://oralaid.ai (post-deploy checks)
+# Repository variables: ORALAID_API_ORIGIN, SITE_URL
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+  security:
+    uses: ./.github/workflows/security.yml
+    permissions: { contents: read, security-events: write, actions: read }
+
+  backend:
+    name: Deploy API
+    needs: [ci, security]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        env: { HOOK: "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" }
+        run: |
+          if [ -z "$HOOK" ]; then echo "No deploy hook configured; skipping (Render auto-deploy may handle it)."; exit 0; fi
+          curl -fsS -X POST "$HOOK"
+
+  web:
+    name: Deploy web app to Netlify
+    needs: [ci, security]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+        env:
+          ORALAID_API_ORIGIN: ${{ vars.ORALAID_API_ORIGIN }}
+          SITE_URL: ${{ vars.SITE_URL }}
+      - id: deploy
+        name: Netlify deploy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          npx --yes netlify-cli@17 deploy --dir=dist --prod --no-build \
+            --message "prod ${GITHUB_SHA::7}" --json > deploy.json
+          echo "url=$(node -p "require('./deploy.json').url")" >> "$GITHUB_OUTPUT"
+
+  verify:
+    name: Post-deploy checks
+    needs: [backend, web]
+    runs-on: ubuntu-latest
+    env: { URL: "${{ secrets.PRODUCTION_URL }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Health, headers and SEO files
+        run: |
+          [ -z "$URL" ] && { echo "PRODUCTION_URL not set; skipping"; exit 0; }
+          set -e
+          for i in $(seq 1 20); do curl -fsS "$URL/api/health" && break; sleep 15; done
+          curl -fsS "$URL/robots.txt" | grep -q Sitemap
+          curl -fsS "$URL/sitemap.xml" | grep -q "<urlset"
+          curl -sI "$URL/" | grep -qi "strict-transport-security"
+          curl -sI "$URL/" | grep -qi "content-security-policy"
+      - name: k6 smoke against production
+        if: env.URL != ''
+        uses: grafana/run-k6-action@v1
+        env: { BASE_URL: "${{ env.URL }}", PROFILE: smoke }
+        with: { path: loadtests/k6.js }

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Patient Messaging — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+    .messaging-container {
+        height: calc(100vh - 160px);
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        display: flex;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+    .contacts-panel {
+        width: 320px;
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #f8fafc;
+    }
+    .panel-header {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+        background: #fff;
+    }
+    .contact-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+    .contact-item {
+        padding: 16px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background 0.2s;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+    .contact-item:hover { background: #f8fafc; }
+    .contact-item.active {
+        background: #f0f7ff;
+        border-left: 4px solid var(--primary);
+    }
+    .contact-avatar {
+        width: 44px;
+        height: 44px;
+        background: #e2e8f0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #64748b;
+        flex-shrink: 0;
+    }
+    .active .contact-avatar { background: var(--primary); color: #fff; }
+    
+    .message-thread {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+    .msg-doctor {
+        align-self: flex-end;
+        background: var(--primary);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+    .msg-patient {
+        align-self: flex-start;
+        background: #fff;
+        color: var(--text-primary);
+        border: 1px solid var(--border);
+        border-bottom-left-radius: 4px;
+    }
+    .msg-meta {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    .chat-input-area {
+        padding: 20px;
+        background: #fff;
+        border-top: 1px solid var(--border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="messaging-container">
+    <!-- Left: Contact List -->
+    <div class="contacts-panel">
+        <div class="panel-header">
+            <h6 style="font-weight:800;margin:0">Conversations</h6>
+            <div class="mt-2">
+                <input type="text" class="form-control form-control-sm" id="contactSearch" placeholder="Search patients..." onkeyup="filterContacts()">
+            </div>
+        </div>
+        <div class="contact-list" id="contactList">
+            <!-- Contacts will be injected here -->
+        </div>
+    </div>
+
+    <!-- Right: Chat Area -->
+    <div class="chat-panel" id="chatPanel" style="display:none">
+        <div class="panel-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <div class="contact-avatar" id="activeAvatar">?</div>
+                <div>
+                    <h6 style="margin:0;font-weight:700" id="activeName">Select a patient</h6>
+                    <span class="badge bg-danger" id="riskBadge" style="display:none;font-size:0.6rem">High Risk</span>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" id="btnStartVideo">
+                    <i class="ti ti-video me-1"></i>Video Call
+                </button>
+            </div>
+        </div>
+        
+        <div class="message-thread" id="messageThread">
+            <!-- Messages will be injected here -->
+        </div>
+
+        <div class="chat-input-area">
+            <form id="chatForm" class="d-flex gap-2">
+                <button type="button" class="btn btn-light"><i class="ti ti-paperclip"></i></button>
+                <input type="text" class="form-control" id="chatInput" placeholder="Type clinical advice or follow-up instructions..." autocomplete="off">
+                <button type="submit" class="btn btn-primary px-4"><i class="ti ti-send"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="chat-panel justify-content-center align-items-center text-center" id="emptyState">
+        <div style="max-width:300px">
+            <i class="ti ti-message-dots" style="font-size:3rem;color:var(--border);margin-bottom:16px;display:block"></i>
+            <h5 style="font-weight:700">Patient Communications</h5>
+            <p style="color:var(--text-secondary);font-size:0.85rem">Select a conversation from the left to start clinical messaging.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let patients = [];
+    let activePatientId = null;
+    let pollInterval = null;
+
+    window.onload = async () => {
+        await loadContacts();
+    };
+
+    async function loadContacts() {
+        const res = await fetch('/api/patients');
+        patients = await res.json();
+        renderContacts();
+    }
+
+    function renderContacts() {
+        const list = document.getElementById('contactList');
+        list.innerHTML = '';
+        patients.forEach(p => {
+            const item = document.createElement('div');
+            item.className = `contact-item ${activePatientId === p.id ? 'active' : ''}`;
+            item.onclick = () => selectPatient(p);
+            item.innerHTML = `
+                <div class="contact-avatar">${p.name[0].toUpperCase()}</div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Patient ID: PAT-${p.id}</div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function filterContacts() {
+        const q = document.getElementById('contactSearch').value.toLowerCase();
+        const items = document.getElementsByClassName('contact-item');
+        patients.forEach((p, i) => {
+            items[i].style.display = p.name.toLowerCase().includes(q) ? 'flex' : 'none';
+        });
+    }
+
+    async function selectPatient(p) {
+        activePatientId = p.id;
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('chatPanel').style.display = 'flex';
+        document.getElementById('activeName').textContent = p.name;
+        document.getElementById('activeAvatar').textContent = p.name[0].toUpperCase();
+        
+        renderContacts();
+        await loadMessages();
+        
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(loadMessages, 5000);
+        
+        document.getElementById('btnStartVideo').onclick = () => {
+            window.location.href = `/schedule?patient_id=${p.id}&auto_video=1`;
+        };
+    }
+
+    async function loadMessages() {
+        if (!activePatientId) return;
+        const res = await fetch(`/api/messages/${activePatientId}`);
+        const msgs = await res.json();
+        
+        const thread = document.getElementById('messageThread');
+        const isAtBottom = thread.scrollHeight - thread.scrollTop <= thread.clientHeight + 100;
+        
+        thread.innerHTML = '';
+        msgs.forEach(m => {
+            const div = document.createElement('div');
+            div.className = `message-bubble ${m.sender_type === 'doctor' ? 'msg-doctor' : 'msg-patient'}`;
+            const date = new Date(m.created_at);
+            div.innerHTML = `
+                <div>${m.content}</div>
+                <span class="msg-meta">${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            `;
+            thread.appendChild(div);
+        });
+        
+        if (isAtBottom) thread.scrollTop = thread.scrollHeight;
+    }
+
+    document.getElementById('chatForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chatInput');
+        const content = input.value.trim();
+        if (!content || !activePatientId) return;
+        
+        const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                patient_id: activePatientId,
+                content: content
+            })
+        });
+        
+        if (res.ok) {
+            input.value = '';
+            await loadMessages();
+        }
+    };
+</script>
+{% endblock %}

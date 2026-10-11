@@ -1091,12 +1091,11 @@ class EnhancedLIMEGradCAMVisualization:
             os.makedirs(results_dir, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             base_filename = f"{self.image_name}_{timestamp}"
-            # Save visualization images
             self.fig_lime.savefig(os.path.join(results_dir, f'{base_filename}_lime.png'), dpi=300, bbox_inches='tight')
             self.fig_gradcam.savefig(os.path.join(results_dir, f'{base_filename}_gradcam.png'), dpi=300, bbox_inches='tight')
             self.fig_lime_gradcam.savefig(os.path.join(results_dir, f'{base_filename}_lime_gradcam_overlay.png'), dpi=300, bbox_inches='tight')
             self.fig_contrib.savefig(os.path.join(results_dir, f'{base_filename}_contributions.png'), dpi=300, bbox_inches='tight')
-            # Prepare results dictionary
+ 
             results = {
                 'image_name': self.image_name,
                 'timestamp': timestamp,
@@ -1124,11 +1123,11 @@ class EnhancedLIMEGradCAMVisualization:
                 'num_segments': self.segments_var.get(),
                 'is_mouth_open': self.current_data['is_mouth_open']
             }
-            # Save JSON
+
             json_path = os.path.join(results_dir, f'{base_filename}_results.json')
             with open(json_path, 'w') as f:
                 json.dump(results, f, indent=2)
-            # Save report
+
             report_path = os.path.join(results_dir, f'{base_filename}_report.txt')
             with open(report_path, 'w') as f:
                 f.write("LIME & Grad-CAM Analysis Report\n")

@@ -22,3 +22,43 @@ venv/
 .DS_Store
 
 models/*.pth
+# ── OralAID: never commit clinical data, images, databases, weights or secrets ──
+# Patient images and generated overlays
+uploads/
+**/uploads/
+results/
+results_fl/
+oralaid_app/data/
+oralaid_app/static/results/
+oralaid_app/static/annotations/
+oralaid_app/instance/
+oralaid_app/logs/
+static/results/
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.heic
+*.dcm
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+# Model weights (deploy via ORALAID_MODEL_DIR or ORALAID_CLASSIFIER_URL + SHA256)
+*.pth
+*.pt
+*.onnx
+*.ckpt
+# Secrets
+.env
+.env.*
+!.env.example
+**/deploy/.env
+# Build output and tooling
+frontend/dist/
+frontend/_legacy/
+node_modules/
+.pytest_cache/
+.ruff_cache/
+test-results/
+loadtests/results/

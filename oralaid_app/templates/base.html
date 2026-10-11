@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}OralAID - AI Oral Cancer Detection{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #0e6db4;
+      --primary-dark: #0a4f82;
+      --primary-light: #e6f1fb;
+      --accent: #378ADD;
+      --bg-white: #ffffff;
+      --bg-surface: #f7fafd;
+      --bg-card: #ffffff;
+      --text-primary: #0a1628;
+      --text-secondary: #4a6080;
+      --border: #d0e4f7;
+      --success: #1D9E75;
+      --warning: #BA7517;
+      --danger: #E24B4A;
+
+      --primary-d: var(--primary-dark);
+      --primary-l: var(--primary-light);
+      --secondary: var(--accent);
+      --ink: var(--text-primary);
+      --text: var(--text-primary);
+      --text-muted: var(--text-secondary);
+      --panel: var(--bg-card);
+      --panel-solid: var(--bg-card);
+      --panel-soft: var(--bg-surface);
+      --line: rgba(14,109,180,0.1);
+      --line-strong: var(--border);
+      --dark: var(--text-primary);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 2px 20px rgba(14,109,180,0.06);
+      --shadow-hover: 0 8px 28px rgba(14,109,180,0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      letter-spacing: 0;
+      text-rendering: optimizeLegibility;
+    }
+
+    h1, h2, h3, h4, h5, h6,
+    .navbar-brand, .stat-value, .section-title {
+      color: var(--text-primary);
+      font-family: "Space Grotesk", "Inter", system-ui, sans-serif !important;
+      font-weight: 600;
+      letter-spacing: 0;
+      line-height: 1.15;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.18s ease;
+    }
+
+    a:hover { color: var(--primary-dark); }
+
+    code {
+      color: var(--primary-dark);
+      background: var(--primary-light);
+      border-radius: 6px;
+      padding: 2px 6px;
+    }
+
+    .section-label {
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .gradient-text,
+    .shine {
+      color: var(--primary-dark);
+      background: linear-gradient(135deg, var(--primary-dark), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .public-navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1030;
+      min-height: 72px;
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+    }
+
+    .navbar-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary) !important;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: inline-grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(14,109,180,0.28);
+      flex: 0 0 auto;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .navbar-nav {
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-link {
+      color: var(--text-secondary) !important;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 8px 12px !important;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+
+    .nav-link:hover,
+    .nav-link:focus,
+    .nav-link.active {
+      color: var(--primary) !important;
+      background: var(--primary-light);
+      transform: translateY(-1px);
+    }
+
+    .nav-pill {
+      color: #fff !important;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: 0 4px 15px rgba(14,109,180,0.3);
+    }
+
+    .nav-pill:hover,
+    .nav-pill:focus {
+      color: #fff !important;
+      background: linear-gradient(135deg, var(--primary-dark), var(--accent));
+    }
+
+    .navbar-toggler {
+      color: var(--text-primary);
+      border: 1px solid var(--border) !important;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+
+    .app-sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 1040;
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-white);
+      border-right: 1px solid var(--border);
+    }
+
+    .sidebar-header {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(14,109,180,0.1);
+    }
+
+    .sidebar-nav {
+      padding: 18px 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .sidebar-section {
+      margin: 18px 10px 8px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-link {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 42px;
+      margin: 2px 0;
+      padding: 10px 14px 10px 16px;
+      color: var(--text-secondary);
+      border-left: 3px solid transparent;
+      border-radius: 0 10px 10px 0;
+      font-weight: 600;
+      line-height: 1.2;
+      transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+    }
+
+    .sidebar-link i {
+      width: 20px;
+      color: inherit;
+      font-size: 1.15rem;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .sidebar-link:hover {
+      color: var(--primary);
+      background: #f0f7ff;
+    }
+
+    .sidebar-link.active {
+      color: var(--primary);
+      background: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+
+    .sidebar-footer {
+      padding: 16px 18px;
+      border-top: 1px solid rgba(14,109,180,0.1);
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 999px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(14,109,180,0.22);
+    }
+
+    .app-topbar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      left: 280px;
+      z-index: 1030;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 32px;
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+    }
+
+    .breadcrumb-label {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .breadcrumb-title {
+      margin: 2px 0 0;
+      color: var(--text-primary);
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      display: inline-grid;
+      place-items: center;
+      color: var(--text-secondary);
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: all 0.18s ease;
+    }
+
+    .icon-button:hover {
+      color: var(--primary);
+      background: var(--primary-light);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+
+    .mobile-sidebar-toggle {
+      display: none;
+    }
+
+    .app-content {
+      min-height: 100vh;
+      margin-left: 280px;
+      padding-top: 72px;
+      background: var(--bg-surface);
+    }
+
+    .app-main {
+      min-height: calc(100vh - 132px);
+      padding: 32px;
+    }
+
+    .public-main {
+      min-height: calc(100vh - 132px);
+      background: var(--bg-white);
+    }
+
+    .card,
+    .modal-content,
+    .dropdown-menu,
+    .stat-card {
+      color: var(--text-primary);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(14,109,180,0.32);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .card-header {
+      color: var(--text-primary);
+      background: var(--bg-white);
+      border-bottom: 1px solid rgba(14,109,180,0.1);
+      font-weight: 700;
+      padding: 16px 18px;
+    }
+
+    .card-body { padding: 20px; }
+
+    .bg-primary {
+      color: #fff !important;
+      background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
+      border-color: transparent !important;
+    }
+
+    .bg-primary h1, .bg-primary h2, .bg-primary h3, .bg-primary h4, .bg-primary h5, .bg-primary h6,
+    .bg-primary p { color: #fff !important; }
+
+    .bg-dark,
+    .video-container.bg-dark {
+      color: var(--text-primary) !important;
+      background: var(--bg-surface) !important;
+      border: 1px solid var(--border);
+    }
+
+    .bg-dark .text-white,
+    .video-container.bg-dark .text-white {
+      color: var(--text-primary) !important;
+    }
+
+    .btn {
+      border-radius: 10px !important;
+      font-weight: 600;
+      letter-spacing: 0;
+      padding: 12px 24px;
+      line-height: 1.2;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .btn-sm {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .btn-lg {
+      padding: 14px 28px;
+      font-size: 1rem;
+    }
+
+    .btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: 0;
+      box-shadow: 0 4px 15px rgba(14,109,180,0.3);
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary-dark), var(--accent));
+      box-shadow: 0 8px 22px rgba(14,109,180,0.36);
+    }
+
+    .btn-outline-primary {
+      color: var(--primary);
+      background: var(--bg-white);
+      border: 1px solid var(--primary);
+      box-shadow: none;
+    }
+
+    .btn-outline-primary:hover,
+    .btn-outline-primary:focus {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-color: transparent;
+      box-shadow: 0 8px 22px rgba(14,109,180,0.26);
+    }
+
+    .btn-success {
+      color: #fff;
+      background: var(--success);
+      border: 0;
+    }
+
+    .btn-danger {
+      color: #fff;
+      background: var(--danger);
+      border: 0;
+    }
+
+    .btn-warning {
+      color: #fff;
+      background: var(--warning);
+      border: 0;
+    }
+
+    .btn-outline-secondary,
+    .btn-secondary {
+      color: var(--text-secondary);
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline-danger {
+      color: var(--danger);
+      background: var(--bg-white);
+      border: 1px solid rgba(226,75,74,0.35);
+    }
+
+    .btn-outline-danger:hover {
+      color: #fff;
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .stat-card {
+      position: relative;
+      min-height: 132px;
+      padding: 22px;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: var(--accent-color, linear-gradient(180deg, var(--primary), var(--accent)));
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-label {
+      margin-top: 8px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .stat-icon {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      color: var(--primary);
+      font-size: 2rem;
+      opacity: 0.16;
+    }
+
+    .badge,
+    .pill,
+    .category-badge {
+      border-radius: 999px !important;
+      padding: 6px 10px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .badge-risk-high {
+      color: #a51f1f;
+      background: rgba(226,75,74,0.1);
+      border: 1px solid rgba(226,75,74,0.24);
+    }
+
+    .badge-risk-medium {
+      color: #8a510d;
+      background: rgba(186,117,23,0.12);
+      border: 1px solid rgba(186,117,23,0.24);
+    }
+
+    .badge-risk-low {
+      color: #0f7556;
+      background: rgba(29,158,117,0.11);
+      border: 1px solid rgba(29,158,117,0.24);
+    }
+
+    .table {
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .table thead th {
+      padding: 13px 16px;
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .table tbody td {
+      padding: 15px 16px;
+      border-bottom: 1px solid rgba(14,109,180,0.08);
+      vertical-align: middle;
+    }
+
+    .table tbody tr:hover { background: #f0f7ff; }
+
+    .form-label {
+      margin-bottom: 7px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .form-control,
+    .form-select {
+      min-height: 44px;
+      color: var(--text-primary);
+      background: var(--bg-white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      box-shadow: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    textarea.form-control { min-height: auto; }
+
+    .form-control:focus,
+    .form-select:focus {
+      color: var(--text-primary);
+      background: #fff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(14,109,180,0.14);
+    }
+
+    .form-control::placeholder { color: #8ba0bb; }
+
+    .border-dashed,
+    .upload-zone {
+      border: 2px dashed rgba(14,109,180,0.28) !important;
+      background: var(--bg-surface);
+      border-radius: 16px !important;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .upload-zone {
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .border-dashed:hover,
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      transform: translateY(-1px);
+      border-color: var(--primary) !important;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .progress {
+      height: 8px;
+      background: rgba(14,109,180,0.12);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 999px;
+    }
+
+    .alert {
+      border-radius: 16px;
+      border: 1px solid transparent;
+      box-shadow: var(--shadow);
+    }
+
+    .alert-danger {
+      color: #9b2424;
+      background: rgba(226,75,74,0.1);
+      border-color: rgba(226,75,74,0.18);
+    }
+
+    .alert-success {
+      color: #0f7556;
+      background: rgba(29,158,117,0.1);
+      border-color: rgba(29,158,117,0.18);
+    }
+
+    .alert-warning {
+      color: #8a510d;
+      background: rgba(186,117,23,0.12);
+      border-color: rgba(186,117,23,0.2);
+    }
+
+    .alert-info {
+      color: var(--primary-dark);
+      background: var(--primary-light);
+      border-color: var(--border);
+    }
+
+    .nav-tabs {
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-tabs .nav-link {
+      color: var(--text-secondary) !important;
+      background: transparent !important;
+      border: 1px solid transparent !important;
+      border-radius: 10px 10px 0 0 !important;
+      padding: 10px 16px !important;
+    }
+
+    .nav-tabs .nav-link.active {
+      color: var(--primary) !important;
+      background: #fff !important;
+      border-color: var(--border) var(--border) #fff !important;
+    }
+
+    .prob-bar-wrap { margin-bottom: 12px; }
+
+    .prob-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .prob-bar {
+      height: 8px;
+      overflow: hidden;
+      background: rgba(14,109,180,0.1);
+      border-radius: 999px;
+    }
+
+    .prob-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.9s ease;
+    }
+
+    .result-image,
+    img[style*="box-shadow"] {
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow) !important;
+    }
+
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      display: inline-grid;
+      place-items: center;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .chat-header {
+      padding: 16px 18px;
+      color: var(--text-primary);
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chat-messages {
+      min-height: 360px;
+      background: var(--bg-white);
+    }
+
+    .chat-input,
+    .card-footer {
+      padding: 14px;
+      background: var(--bg-white);
+      border-top: 1px solid var(--border);
+    }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .message.own {
+      flex-direction: row-reverse;
+      text-align: right;
+    }
+
+    .message-content {
+      max-width: min(72%, 620px);
+      padding: 10px 12px;
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .message.own .message-content {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-color: transparent;
+    }
+
+    .ai-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(247,250,253,0.86);
+      backdrop-filter: blur(16px);
+    }
+
+    .ai-loader.show { display: flex; }
+
+    .loader-panel {
+      width: min(430px, calc(100vw - 36px));
+      padding: 34px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-hover);
+    }
+
+    .loader-ring {
+      width: 78px;
+      height: 78px;
+      margin: 0 auto;
+      border: 4px solid rgba(14,109,180,0.13);
+      border-top-color: var(--accent);
+      border-right-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .fade-up,
+    .slide-in {
+      opacity: 1;
+      transform: none;
+    }
+
+    hr {
+      border-color: rgba(14,109,180,0.1) !important;
+      opacity: 1;
+    }
+
+    .text-muted { color: var(--text-secondary) !important; }
+    .text-primary { color: var(--primary) !important; }
+    .text-success { color: var(--success) !important; }
+    .text-danger { color: var(--danger) !important; }
+    .text-warning { color: var(--warning) !important; }
+
+    footer {
+      padding: 20px 32px;
+      color: var(--text-secondary);
+      background: var(--bg-white);
+      border-top: 1px solid var(--border);
+      font-size: 0.86rem;
+      text-align: center;
+    }
+
+    .public-footer { padding-inline: 0; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      display: inline-block;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 5px rgba(29,158,117,0.12);
+    }
+
+    .flash-stack {
+      position: fixed;
+      top: 86px;
+      right: 20px;
+      z-index: 9000;
+      min-width: min(340px, calc(100vw - 40px));
+    }
+
+    @media (max-width: 991.98px) {
+      .app-sidebar {
+        position: fixed;
+        width: 280px;
+        min-height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.24s ease;
+        box-shadow: 20px 0 50px rgba(10,22,40,0.14);
+      }
+
+      body.sidebar-open .app-sidebar { transform: translateX(0); }
+
+      .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1035;
+        display: none;
+        background: rgba(10,22,40,0.38);
+      }
+
+      body.sidebar-open .sidebar-backdrop { display: block; }
+
+      .mobile-sidebar-toggle { display: inline-grid; }
+
+      .app-topbar {
+        position: sticky;
+        left: 0;
+        padding: 0 18px;
+      }
+
+      .app-content {
+        margin-left: 0;
+        padding-top: 0;
+      }
+
+      .app-main { padding: 22px 16px; }
+
+      .public-navbar .navbar-collapse {
+        margin-top: 12px;
+        padding: 14px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+      }
+    }
+
+    @media (max-width: 575.98px) {
+      .topbar-actions .user-chip { display: none; }
+      .card-body { padding: 16px; }
+      footer { padding-inline: 16px; }
+    }
+
+    @media print {
+      .app-sidebar,
+      .app-topbar,
+      .public-navbar,
+      footer,
+      .no-print { display: none !important; }
+
+      .app-content,
+      .app-main,
+      .public-main {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+      }
+
+      .card {
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
+  <style>
+    .math-card,
+    .arch-box,
+    .aws-card,
+    .pipeline-step,
+    .code-block,
+    .eq-box {
+      color: var(--text-primary) !important;
+      background: var(--bg-card) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 16px !important;
+    }
+
+    .eq-box,
+    .code-block {
+      color: var(--text-primary) !important;
+      background: var(--bg-surface) !important;
+    }
+
+    .shine {
+      color: var(--primary-dark) !important;
+      background: linear-gradient(135deg, var(--primary-dark), var(--accent)) !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+    }
+
+    .metric-big,
+    .price-num,
+    [style*="Space Grotesk"],
+    [style*="DM Sans"],
+    [style*="Syne"] {
+      font-family: "Inter", system-ui, sans-serif !important;
+    }
+
+    .katex-display,
+    .pipeline-step *,
+    .code-block *,
+    .eq-box * {
+      color: inherit !important;
+    }
+
+    .layer-row,
+    .infra-row,
+    .country-row {
+      border-bottom-color: rgba(14,109,180,0.1) !important;
+    }
+
+    [style*="rgba(0,0,0"],
+    [style*="background:#1e293b"],
+    [style*="background: #1e293b"],
+    [style*="background:#0f172a"],
+    [style*="background: #0f172a"] {
+      color: var(--text-primary) !important;
+      background: var(--bg-surface) !important;
+      border-color: var(--border) !important;
+    }
+
+    [style*="#667eea"],
+    [style*="#764ba2"],
+    [style*="#6366f1"] {
+      background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
+      border-color: var(--border) !important;
+    }
+
+    [style*="rgba(255,255,255,0.05"],
+    [style*="rgba(255,255,255,0.06"],
+    [style*="rgba(255,255,255,0.08"] {
+      border-color: rgba(14,109,180,0.1) !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="ai-loader" id="aiLoader">
+    <div class="loader-panel">
+      <div class="loader-ring mb-4"></div>
+      <h5 class="mb-2">Analyzing With AI</h5>
+      <p style="color:var(--text-secondary);font-size:0.92rem;margin-top:8px" id="loaderStatus">Running EfficientNet-B4 inference...</p>
+      <div class="mt-3">
+        <div class="progress"><div class="progress-bar" id="loaderBar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  {% set page_names = {
+    'index': 'Home',
+    'dashboard': 'Dashboard',
+    'diagnose': 'New Diagnosis',
+    'result': 'Diagnosis Result',
+    'results': 'Results',
+    'reports': 'Reports',
+    'report_pdf': 'Clinical Report',
+    'progression_view': 'Progression',
+    'patients': 'Patients',
+    'schedule': 'Schedule',
+    'messages': 'Messages',
+    'lab_contacts': 'Lab Contacts',
+    'model_performance': 'Model Performance',
+    'admin_dashboard': 'Admin',
+    'devops_dashboard': 'DevOps',
+    'pricing': 'Pricing',
+    'blogs': 'Blogs',
+    'blog_post': 'Article',
+    'about': 'About',
+    'services': 'Services',
+    'case_studies': 'Case Studies',
+    'careers': 'Careers',
+    'privacy': 'Privacy',
+    'login': 'Login',
+    'register': 'Register'
+  } %}
+  {% set current_page = page_names.get(request.endpoint, 'Workspace') %}
+
+  {% if current_user.is_authenticated %}
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <aside class="app-sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <a class="navbar-brand" href="{{ url_for('dashboard') }}" aria-label="OralAID dashboard">
+          <span class="brand-mark">OA</span>
+          OralAID
+        </a>
+      </div>
+      <nav class="sidebar-nav" aria-label="Workspace navigation">
+        {% set sidebar_items = [
+          ('dashboard', 'ti-layout-dashboard', 'Dashboard', url_for('dashboard'), ['dashboard']),
+          ('diagnose', 'ti-stethoscope', 'New Diagnosis', url_for('diagnose'), ['diagnose']),
+          ('patients', 'ti-users', 'Patients', url_for('patients'), ['patients']),
+          ('results', 'ti-file-analytics', 'Results', url_for('results'), ['results', 'result']),
+          ('reports', 'ti-file-certificate', 'Reports', url_for('reports'), ['reports', 'report_pdf']),
+          ('schedule', 'ti-calendar', 'Schedule', url_for('schedule'), ['schedule']),
+          ('messages', 'ti-message-2', 'Messages', url_for('messages'), ['messages']),
+          ('lab_contacts', 'ti-building-hospital', 'Lab Contacts', url_for('lab_contacts'), ['lab_contacts']),
+          ('model_performance', 'ti-chart-bar', 'Model Performance', url_for('model_performance'), ['model_performance'])
+        ] %}
+        <div class="sidebar-section">Clinical</div>
+        {% for key, icon, label, href, endpoints in sidebar_items %}
+          <a class="sidebar-link {% if request.endpoint in endpoints %}active{% endif %}" href="{{ href }}">
+            <i class="ti {{ icon }}"></i>
+            <span>{{ label }}</span>
+          </a>
+        {% endfor %}
+        {% if current_user.role == 'admin' %}
+          <div class="sidebar-section">Admin</div>
+          <a class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" href="{{ url_for('admin_dashboard') }}">
+            <i class="ti ti-settings"></i>
+            <span>Admin</span>
+          </a>
+          <a class="sidebar-link {% if request.endpoint == 'devops_dashboard' %}active{% endif %}" href="{{ url_for('devops_dashboard') }}">
+            <i class="ti ti-server"></i>
+            <span>DevOps</span>
+          </a>
+        {% endif %}
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <span class="avatar">{{ (current_user.full_name or current_user.username)[:1]|upper }}</span>
+          <div style="min-width:0">
+            <div style="font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              {{ current_user.full_name or current_user.username }}
+            </div>
+            <div style="color:var(--text-secondary);font-size:0.78rem;text-transform:capitalize">{{ current_user.role }}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-content">
+      <header class="app-topbar">
+        <div class="d-flex align-items-center gap-3">
+          <button class="icon-button mobile-sidebar-toggle" type="button" id="mobileSidebarToggle" aria-label="Open navigation">
+            <i class="ti ti-menu-2"></i>
+          </button>
+          <div>
+            <div class="breadcrumb-label">OralAID Workspace</div>
+            <div class="breadcrumb-title">{{ current_page }}</div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div class="dropdown">
+            <button class="icon-button position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="notifBell">
+              <i class="ti ti-bell"></i>
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display:none">0</span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end p-0" style="width:320px;max-height:400px;overflow-y:auto">
+              <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0" style="font-weight:800">Notifications</h6>
+                <span class="section-label" style="font-size:0.6rem" id="unreadCountText">0 Unread</span>
+              </div>
+              <div id="notifList">
+                <div class="p-4 text-center text-muted" style="font-size:0.8rem">No new notifications</div>
+              </div>
+            </div>
+          </div>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('diagnose') }}">
+            <i class="ti ti-plus me-1"></i>New Diagnosis
+          </a>
+          <div class="user-chip">
+            <span class="avatar">{{ (current_user.full_name or current_user.username)[:1]|upper }}</span>
+          </div>
+          <a class="icon-button" href="{{ url_for('logout') }}" title="Logout" aria-label="Logout">
+            <i class="ti ti-logout"></i>
+          </a>
+        </div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack">
+            {% for cat, msg in messages %}
+              <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+                {{ msg }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <main class="app-main">
+        {% block content %}{% endblock %}
+      </main>
+      <footer>
+        OralAID clinical AI workspace · EfficientNet-B4 + U-Net + LIME + GradCAM
+      </footer>
+    </div>
+  {% else %}
+    <nav class="navbar navbar-expand-lg public-navbar">
+      <div class="container">
+        <a class="navbar-brand" href="{{ url_for('index') }}" aria-label="OralAID home">
+          <span class="brand-mark">OA</span>
+          OralAID
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#publicNav" aria-label="Toggle navigation">
+          <i class="ti ti-menu-2"></i>
+        </button>
+
+        <div class="collapse navbar-collapse" id="publicNav">
+          <ul class="navbar-nav mx-auto">
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Platform</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('services') }}">Services</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('case_studies') }}">Case Studies</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('pricing') }}">Pricing</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('blogs') }}">Research</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('about') }}">Company</a></li>
+          </ul>
+          <ul class="navbar-nav">
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('demo_booking') }}">Book Demo</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+            <li class="nav-item"><a class="nav-link nav-pill" href="{{ url_for('register') }}">Start Free Trial</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+          {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+              {{ msg }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="public-main">
+      {{ self.content() }}
+    </main>
+    <footer class="public-footer">
+      <div class="container">
+        <div class="row g-4 text-start">
+          <div class="col-lg-4">
+            <a class="navbar-brand mb-3" href="{{ url_for('index') }}">
+              <span class="brand-mark">OA</span>
+              OralAID
+            </a>
+            <p style="color:var(--text-secondary);max-width:360px;margin:0">Enterprise oral cancer screening AI for hospitals, dental networks, and on-premise clinical environments.</p>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="section-label mb-2">Platform</div>
+            <div class="d-grid gap-2">
+              <a href="{{ url_for('services') }}">Services</a>
+              <a href="{{ url_for('case_studies') }}">Case Studies</a>
+              <a href="{{ url_for('pricing') }}">Pricing</a>
+            </div>
+          </div>
+          <div class="col-6 col-lg-2">
+            <div class="section-label mb-2">Company</div>
+            <div class="d-grid gap-2">
+              <a href="{{ url_for('about') }}">About</a>
+              <a href="{{ url_for('careers') }}">Careers</a>
+              <a href="{{ url_for('privacy') }}">Privacy</a>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="section-label mb-2">Private Deployment</div>
+            <p style="color:var(--text-secondary);margin:0">Deploy AstraOral AI on hospital-owned servers so patient data stays inside your network.</p>
+          </div>
+        </div>
+        <div class="mt-4 pt-3 text-center" style="border-top:1px solid var(--border);color:var(--text-secondary)">OralAID · Premium clinical AI infrastructure</div>
+      </div>
+    </footer>
+  {% endif %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <script>
+    function showLoader(){
+      const loader = document.getElementById('aiLoader');
+      const bar = document.getElementById('loaderBar');
+      const status = document.getElementById('loaderStatus');
+      if (!loader || !bar || !status) return;
+      loader.classList.add('show');
+      const steps = [
+        [15, 'Preprocessing image...'],
+        [35, 'Running EfficientNet-B4...'],
+        [55, 'Generating GradCAM heatmap...'],
+        [75, 'Computing LIME explanations...'],
+        [90, 'Running U-Net segmentation...'],
+        [100, 'Finalizing results...']
+      ];
+      let index = 0;
+      const interval = setInterval(() => {
+        if (index < steps.length) {
+          bar.style.width = steps[index][0] + '%';
+          status.textContent = steps[index][1];
+          index += 1;
+        } else {
+          clearInterval(interval);
+        }
+      }, 580);
+    }
+
+    function showNotification(message, type = 'info') {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'alert alert-' + type + ' alert-dismissible fade show oralaid-toast';
+      wrapper.style.position = 'fixed';
+      wrapper.style.right = '20px';
+      wrapper.style.bottom = '20px';
+      wrapper.style.zIndex = '9100';
+      wrapper.style.minWidth = 'min(340px, calc(100vw - 40px))';
+      wrapper.style.boxShadow = '0 10px 30px rgba(0,0,0,0.1)';
+      wrapper.style.borderLeft = '6px solid ' + (type === 'danger' ? '#E24B4A' : (type === 'success' ? '#1D9E75' : '#0e6db4'));
+      
+      wrapper.innerHTML = `
+        <div class="d-flex align-items-center gap-3">
+          <i class="ti ti-${type === 'danger' ? 'alert-triangle' : (type === 'success' ? 'circle-check' : 'info-circle')}" style="font-size:1.4rem"></i>
+          <div>${message}</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      document.body.appendChild(wrapper);
+      setTimeout(() => {
+        wrapper.classList.add('toast-exit');
+        const alert = bootstrap.Alert.getOrCreateInstance(wrapper);
+        setTimeout(() => alert.close(), 220);
+      }, 4800);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('img:not([loading])').forEach((img) => {
+        img.loading = 'lazy';
+      });
+
+      const toggle = document.getElementById('mobileSidebarToggle');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      const closeSidebar = () => document.body.classList.remove('sidebar-open');
+      if (toggle) {
+        toggle.addEventListener('click', () => {
+          document.body.classList.toggle('sidebar-open');
+        });
+      }
+      if (backdrop) backdrop.addEventListener('click', closeSidebar);
+      document.querySelectorAll('.sidebar-link').forEach((link) => {
+        link.addEventListener('click', closeSidebar);
+      });
+
+      document.querySelectorAll('form').forEach((form) => {
+        form.addEventListener('submit', (event) => {
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+          }
+        });
+      });
+
+      const revealItems = document.querySelectorAll('.reveal-on-scroll');
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        revealItems.forEach((item, index) => {
+          item.style.transitionDelay = `${Math.min(index * 35, 240)}ms`;
+          observer.observe(item);
+        });
+      } else {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+      }
+    });
+
+    async function fetchNotifications() {
+      try {
+        const res = await fetch('/api/notifications');
+        const data = await res.json();
+        
+        const badge = document.getElementById('notifBadge');
+        const countText = document.getElementById('unreadCountText');
+        const list = document.getElementById('notifList');
+        
+        if (data.unread_count > 0) {
+          badge.style.display = 'block';
+          badge.textContent = data.unread_count;
+          countText.textContent = `${data.unread_count} Unread`;
+        } else {
+          badge.style.display = 'none';
+          countText.textContent = '0 Unread';
+        }
+        
+        if (data.notifications.length > 0) {
+          list.innerHTML = '';
+          data.notifications.forEach(n => {
+            const item = document.createElement('div');
+            item.className = `p-3 border-bottom d-flex gap-3 align-items-start ${n.is_read ? '' : 'bg-light'}`;
+            item.style.cursor = 'pointer';
+            item.onclick = () => markRead(n.id);
+            
+            let icon = 'ti-bell';
+            if (n.type === 'high-risk') icon = 'ti-alert-triangle text-danger';
+            if (n.type === 'appointment') icon = 'ti-calendar text-primary';
+            if (n.type === 'diagnosis') icon = 'ti-stethoscope text-success';
+            
+            item.innerHTML = `
+              <i class="ti ${icon}" style="font-size:1.2rem;margin-top:2px"></i>
+              <div style="flex:1">
+                <div style="font-size:0.85rem;font-weight:600;line-height:1.3">${n.message}</div>
+                <div style="font-size:0.7rem;color:var(--text-secondary);margin-top:4px">${new Date(n.created_at).toLocaleString()}</div>
+              </div>
+            `;
+            list.appendChild(item);
+          });
+        }
+      } catch (e) {
+        console.error('Error fetching notifications:', e);
+      }
+    }
+
+    async function markRead(id) {
+      await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+      fetchNotifications();
+    }
+
+    if ({{ 'true' if current_user.is_authenticated else 'false' }}) {
+      fetchNotifications();
+      setInterval(fetchNotifications, 10000);
+    }
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

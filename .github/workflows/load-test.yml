@@ -1,0 +1,46 @@
+name: Load test
+
+# Run on demand against staging. Never point stress/spike profiles at production
+# without warning users first.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url: { description: "Target base URL (staging)", required: true }
+      profile:
+        description: "k6 profile"
+        type: choice
+        options: [smoke, load, stress, spike]
+        default: load
+      locust_users: { description: "Locust concurrent users", default: "50" }
+      locust_duration: { description: "Locust duration", default: "5m" }
+
+permissions:
+  contents: read
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/run-k6-action@v1
+        env: { BASE_URL: "${{ inputs.base_url }}", PROFILE: "${{ inputs.profile }}" }
+        with: { path: loadtests/k6.js }
+
+  locust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install locust==2.32.4 numpy pillow
+      - name: Locust (mixed browse + analyze)
+        run: |
+          mkdir -p results
+          locust -f loadtests/locustfile.py --host "${{ inputs.base_url }}" --headless \
+            -u "${{ inputs.locust_users }}" -r 5 -t "${{ inputs.locust_duration }}" \
+            --csv results/locust --html results/locust.html
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: locust-report, path: results/ }

@@ -1,0 +1,64 @@
+{
+  "id": null,
+  "uid": "oralaid-main",
+  "title": "OralAID — AI Diagnostics Dashboard",
+  "tags": ["oralaid", "medical", "ai"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Total Diagnoses",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "oralaid_total_diagnoses", "legendFormat": "Total"}],
+      "options": {"colorMode": "background", "graphMode": "area", "textMode": "auto"},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "blue"}, "unit": "short"}}
+    },
+    {
+      "id": 2, "type": "stat", "title": "High-Risk Cases",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [{"expr": "oralaid_high_risk_diagnoses", "legendFormat": "High Risk"}],
+      "options": {"colorMode": "background", "graphMode": "area"},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "red"}, "unit": "short"}}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Confirmed Correct",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{"expr": "oralaid_correct_predictions", "legendFormat": "Correct"}],
+      "options": {"colorMode": "background", "graphMode": "area"},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "green"}, "unit": "short"}}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Model Accuracy (Feedback)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "targets": [{"expr": "oralaid_correct_predictions / oralaid_total_diagnoses * 100", "legendFormat": "Accuracy %"}],
+      "options": {"colorMode": "background", "graphMode": "none"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "percent", "thresholds": {"steps": [{"color": "red", "value": 0}, {"color": "yellow", "value": 70}, {"color": "green", "value": 90}]}}}
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Diagnoses Over Time",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {"expr": "rate(oralaid_total_diagnoses[5m]) * 60", "legendFormat": "Diagnoses/min"},
+        {"expr": "rate(oralaid_high_risk_diagnoses[5m]) * 60", "legendFormat": "High-Risk/min"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "palette-classic"}}}
+    },
+    {
+      "id": 6, "type": "gauge", "title": "High-Risk Rate",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 4},
+      "targets": [{"expr": "oralaid_high_risk_diagnoses / oralaid_total_diagnoses * 100"}],
+      "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100, "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 20}, {"color": "red", "value": 40}]}}}
+    },
+    {
+      "id": 7, "type": "piechart", "title": "Prediction Distribution",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 4},
+      "targets": [
+        {"expr": "oralaid_high_risk_diagnoses", "legendFormat": "High Risk"},
+        {"expr": "oralaid_total_diagnoses - oralaid_high_risk_diagnoses", "legendFormat": "Low/Medium Risk"}
+      ],
+      "options": {"pieType": "donut"}
+    }
+  ]
+}

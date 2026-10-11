@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}Clinical Schedule — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-container {
+        background: #fff;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+    }
+    .calendar-header {
+        display: grid;
+        grid-template-columns: 80px repeat(7, 1fr);
+        border-bottom: 1px solid var(--border);
+        background: #f8fafc;
+    }
+    .calendar-day-label {
+        padding: 12px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border-left: 1px solid var(--border);
+    }
+    .calendar-body {
+        display: grid;
+        grid-template-columns: 80px repeat(7, 1fr);
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    .time-label {
+        padding: 10px;
+        text-align: right;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        border-bottom: 1px solid #f1f5f9;
+        height: 50px;
+    }
+    .calendar-slot {
+        height: 50px;
+        border-left: 1px solid var(--border);
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        transition: background 0.1s;
+        position: relative;
+    }
+    .calendar-slot:hover {
+        background: #f0f7ff;
+    }
+    .booked-slot {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        right: 2px;
+        bottom: 2px;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        overflow: hidden;
+        z-index: 1;
+    }
+    .booked-slot.video { background: var(--success); }
+    
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+    .status-Scheduled { background: rgba(14,109,180,0.1); color: var(--primary); }
+    .status-Completed { background: rgba(29,158,117,0.1); color: var(--success); }
+    .status-Cancelled { background: rgba(226,75,74,0.1); color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 style="font-weight:800;margin:0">Consultation Schedule</h4>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin:0">Manage patient appointments and telehealth sessions.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openBookingModal()">
+        <i class="ti ti-calendar-plus me-2"></i>New Appointment
+    </button>
+</div>
+
+<div class="calendar-container mb-5">
+    <div class="calendar-header" id="calendarHeader">
+        <div style="padding:12px"></div>
+        <!-- Days will be injected here -->
+    </div>
+    <div class="calendar-body" id="calendarBody">
+        <!-- Time slots will be injected here -->
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white">Upcoming Appointments</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Type</th>
+                        <th>Date &amp; Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="appointmentsList">
+                    <!-- Appointments will be injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" style="font-weight:800">Schedule Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookingForm">
+                    <div class="mb-3">
+                        <label class="form-label">Patient</label>
+                        <select class="form-select" id="m_patient_id" required>
+                            <option value="">Select Patient...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Appointment Type</label>
+                        <select class="form-select" id="m_type" required>
+                            <option value="Initial Diagnosis">Initial Diagnosis</option>
+                            <option value="Follow-up">Follow-up</option>
+                            <option value="Video Consultation">Video Consultation</option>
+                            <option value="Biopsy Referral">Biopsy Referral</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date &amp; Time</label>
+                        <input type="datetime-local" class="form-control" id="m_scheduled_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Clinical Notes</label>
+                        <textarea class="form-control" id="m_notes" rows="3" placeholder="Symptoms, medical history summary..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-3 mt-2">
+                        <i class="ti ti-check me-2"></i>Confirm Booking
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+    let patients = [];
+    let appointments = [];
+
+    window.onload = async () => {
+        await loadData();
+        renderCalendar();
+        renderAppointments();
+    };
+
+    async function loadData() {
+        const [pRes, aRes] = await Promise.all([
+            fetch('/api/patients'),
+            fetch('/api/appointments')
+        ]);
+        patients = await pRes.json();
+        appointments = await aRes.json();
+        
+        const pSelect = document.getElementById('m_patient_id');
+        patients.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name} (${p.age}y)`;
+            pSelect.appendChild(opt);
+        });
+    }
+
+    function renderCalendar() {
+        const header = document.getElementById('calendarHeader');
+        const body = document.getElementById('calendarBody');
+        
+        // Setup days
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+        
+        header.innerHTML = '<div style="padding:12px"></div>';
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + i);
+            const label = document.createElement('div');
+            label.className = 'calendar-day-label';
+            label.innerHTML = `<div>${days[i]}</div><div style="font-size:0.7rem;color:var(--text-secondary)">${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}</div>`;
+            header.appendChild(label);
+        }
+
+        // Setup time slots (8AM - 6PM)
+        body.innerHTML = '';
+        for (let hour = 8; hour < 19; hour++) {
+            if (hour > 18) break;
+            
+            for (let min of ['00', '30']) {
+                const timeStr = `${hour}:${min}`;
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'time-label';
+                timeLabel.textContent = timeStr;
+                body.appendChild(timeLabel);
+
+                for (let day = 0; day < 7; day++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'calendar-slot';
+                    
+                    const slotDate = new Date(startOfWeek);
+                    slotDate.setDate(startOfWeek.getDate() + day);
+                    slotDate.setHours(hour, parseInt(min), 0, 0);
+                    
+                    slot.onclick = () => openBookingModal(slotDate);
+                    
+                    // Check for appointments
+                    const appt = appointments.find(a => {
+                        const d = new Date(a.scheduled_date);
+                        return d.getFullYear() === slotDate.getFullYear() &&
+                               d.getMonth() === slotDate.getMonth() &&
+                               d.getDate() === slotDate.getDate() &&
+                               d.getHours() === slotDate.getHours() &&
+                               d.getMinutes() === slotDate.getMinutes();
+                    });
+
+                    if (appt) {
+                        const div = document.createElement('div');
+                        div.className = `booked-slot ${appt.type === 'Video Consultation' ? 'video' : ''}`;
+                        div.innerHTML = `<div style="white-space:nowrap">${appt.patient_name}</div><div style="font-size:0.6rem;opacity:0.8">${appt.type}</div>`;
+                        slot.appendChild(div);
+                    }
+
+                    body.appendChild(slot);
+                }
+            }
+        }
+    }
+
+    function renderAppointments() {
+        const list = document.getElementById('appointmentsList');
+        list.innerHTML = '';
+        
+        appointments.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+        
+        appointments.forEach(a => {
+            const date = new Date(a.scheduled_date);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:600">${a.patient_name}</td>
+                <td><span style="font-size:0.8rem">${a.type}</span></td>
+                <td>
+                    <div style="font-weight:600">${date.toLocaleDateString()}</div>
+                    <div style="font-size:0.8rem;color:var(--text-secondary)">${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                </td>
+                <td><span class="status-badge status-${a.status}">${a.status}</span></td>
+                <td>
+                    <div class="d-flex gap-2">
+                        ${a.type === 'Video Consultation' && a.status === 'Scheduled' ? 
+                            `<a href="/call/${a.id}" class="btn btn-sm btn-success">Join Call</a>` : ''}
+                        <button class="btn btn-sm btn-outline-danger" onclick="updateStatus(${a.id}, 'Cancelled')">Cancel</button>
+                    </div>
+                </td>
+            `;
+            list.appendChild(tr);
+        });
+    }
+
+    function openBookingModal(date) {
+        if (date) {
+            // Format for datetime-local input (YYYY-MM-DDThh:mm)
+            const iso = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            document.getElementById('m_scheduled_date').value = iso;
+        }
+        bookingModal.show();
+    }
+
+    document.getElementById('bookingForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            patient_id: document.getElementById('m_patient_id').value,
+            type: document.getElementById('m_type').value,
+            scheduled_date: document.getElementById('m_scheduled_date').value,
+            notes: document.getElementById('m_notes').value
+        };
+
+        const res = await fetch('/api/appointments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            showNotification('Appointment scheduled successfully!', 'success');
+            bookingModal.hide();
+            await loadData();
+            renderCalendar();
+            renderAppointments();
+        } else {
+            showNotification('Error scheduling appointment.', 'danger');
+        }
+    };
+
+    async function updateStatus(id, status) {
+        if (!confirm(`Are you sure you want to set this appointment as ${status}?`)) return;
+        
+        const res = await fetch(`/api/appointments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        
+        if (res.ok) {
+            await loadData();
+            renderCalendar();
+            renderAppointments();
+        }
+    }
+</script>
+{% endblock %}

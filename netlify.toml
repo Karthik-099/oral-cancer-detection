@@ -1,0 +1,67 @@
+# Netlify configuration for the OralAID web app (frontend/).
+#
+# Required site environment variables (Site settings -> Environment variables):
+#   ORALAID_API_ORIGIN   e.g. https://api.oralaid.ai  (backend; proxied at /api and /files)
+#   SITE_URL             e.g. https://oralaid.ai      (canonical URL for the sitemap)
+#
+# The API is proxied through Netlify so the browser only talks to your domain:
+# no CORS, the backend origin stays private, and static assets come from
+# Netlify's global CDN with long-lived immutable caching.
+
+[build]
+  base = "frontend"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--no-audit --no-fund"
+
+# Production branch is "prod" (set it under Site settings -> Build & deploy ->
+# Branches). Every other branch and pull request gets a deploy preview.
+
+[context.deploy-preview]
+  command = "npm ci && npm run build"
+
+# ── Caching (CDN) ───────────────────────────────────────────────────────────
+# Hashed build assets never change: cache for a year at the edge and in browsers.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# HTML must always revalidate so new deploys show up immediately.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# Clinical images and API responses are private: never cache at the CDN.
+[[headers]]
+  for = "/files/*"
+  [headers.values]
+    Cache-Control = "private, no-store"
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Cache-Control = "no-store"
+
+# ── Security headers ───────────────────────────────────────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-2K2feoalFjARBBFhyb3zCrfyNVJmqro8yIrkNQdQKOE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+
+# Redirects are generated at build time into dist/_redirects by
+# frontend/scripts/postbuild.mjs (API proxy + SPA fallback).

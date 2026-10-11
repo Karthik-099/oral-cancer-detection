@@ -1,0 +1,127 @@
+/* OralAID Global Design Tokens */
+:root {
+    --primary: #0e6db4;
+    --primary-light: #f0f7ff;
+    --primary-dark: #0a568c;
+    --success: #1D9E75;
+    --danger: #E24B4A;
+    --warning: #BA7517;
+    --text-primary: #1a202c;
+    --text-secondary: #718096;
+    --border: #e2e8f0;
+    --shadow: 0 4px 12px rgba(0,0,0,0.05);
+    --shadow-hover: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scan {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes uploadBounce {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-9px); }
+    70% { transform: translateY(2px); }
+}
+
+@keyframes pillAnalyze {
+    0% { background: #f1f5f9; color: #64748b; }
+    45% { background: rgba(14,109,180,0.12); color: var(--primary); }
+    100% { background: rgba(14,109,180,0.18); color: var(--primary-dark); }
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(100%); }
+}
+
+/* Staggered Card Load */
+.card, .metric-card, .feature-card, .pricing-card, .infra-card {
+    opacity: 0;
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+.card:nth-of-type(2), .metric-card:nth-of-type(2), .feature-card:nth-of-type(2), .pricing-card:nth-of-type(2) { animation-delay: 0.06s; }
+.card:nth-of-type(3), .metric-card:nth-of-type(3), .feature-card:nth-of-type(3), .pricing-card:nth-of-type(3) { animation-delay: 0.12s; }
+.card:nth-of-type(4), .metric-card:nth-of-type(4), .feature-card:nth-of-type(4), .pricing-card:nth-of-type(4) { animation-delay: 0.18s; }
+.card:nth-of-type(5), .metric-card:nth-of-type(5), .feature-card:nth-of-type(5), .pricing-card:nth-of-type(5) { animation-delay: 0.24s; }
+.card:nth-of-type(6), .metric-card:nth-of-type(6), .feature-card:nth-of-type(6), .pricing-card:nth-of-type(6) { animation-delay: 0.30s; }
+
+/* Micro-interactions */
+.landing-section {
+    padding: 92px 0;
+    background: #fff;
+}
+
+.landing-section.alt {
+    background: linear-gradient(180deg, #f6fbff, #ffffff);
+}
+
+.btn {
+    transition: all 150ms ease;
+}
+.btn:active { transform: scale(0.97); }
+
+.feature-card, .pricing-card, .stat-card, .metric-card {
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.feature-card:hover, .pricing-card:hover, .stat-card:hover, .metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+}
+
+.upload-zone.dragover svg {
+    animation: uploadBounce 0.42s ease 3;
+}
+
+.status-pill.pill-analyzing {
+    animation: pillAnalyze 0.55s ease forwards, pulse 1.5s infinite 0.55s;
+}
+
+.oralaid-toast {
+    animation: toastIn 220ms ease-out both;
+}
+
+.oralaid-toast.toast-exit {
+    animation: toastOut 220ms ease-in both;
+}
+
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 560ms ease, transform 560ms ease;
+}
+
+.reveal-on-scroll.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Progress Bars */
+.progress-bar {
+    transition: width 1s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .app-sidebar { transition: transform 0.3s; }
+    .main-content { margin-left: 0 !important; }
+}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Pricing — OralAID{% endblock %}
+
+{% block extra_css %}
+<style>
+  .pricing-hero {
+    background:
+      radial-gradient(circle at 82% 8%, rgba(55,138,221,0.2), transparent 34%),
+      linear-gradient(180deg, #fff 0%, #f4faff 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 88px 0 64px;
+  }
+  .pricing-title {
+    max-width: 860px;
+    margin: 0 auto;
+    font-size: clamp(2.6rem, 6vw, 5.3rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.94;
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+  .pricing-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 580px;
+    padding: 32px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  .pricing-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent), #bce8ff);
+  }
+  .pricing-card.featured {
+    border-color: var(--primary);
+    box-shadow: 0 26px 82px rgba(14,109,180,0.18);
+  }
+  .featured-badge {
+    display: inline-flex;
+    width: fit-content;
+    padding: 6px 10px;
+    color: var(--primary);
+    background: var(--primary-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 800;
+  }
+  .price {
+    margin: 22px 0 4px;
+    color: var(--primary);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+  }
+  .price span {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .feature-list {
+    display: grid;
+    gap: 12px;
+    margin: 28px 0;
+    padding: 0;
+    list-style: none;
+    flex: 1;
+  }
+  .feature-list li {
+    display: flex;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+  .feature-list i {
+    color: var(--success);
+    margin-top: 4px;
+  }
+  .comparison-card {
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  .enterprise-banner {
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    border-radius: 8px;
+    padding: 38px;
+    box-shadow: 0 24px 70px rgba(14,109,180,0.2);
+  }
+  @media (max-width: 991.98px) {
+    .pricing-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="pricing-hero text-center">
+  <div class="container">
+    <div class="section-label mb-3">Pricing</div>
+    <h1 class="pricing-title gradient-text">Start with a free trial. Scale to private hospital deployment.</h1>
+    <p style="color:var(--text-secondary);max-width:720px;margin:22px auto 0">Every plan includes AstraOral AI diagnostics. Enterprise plans add on-premise hosting, integrations, governance, and deployment support.</p>
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="container">
+    <div class="pricing-grid">
+      {% set plans = [
+        ('Starter', '$49', '/mo', 'For solo dentists and small practices.', ['14-day free trial', '100 diagnoses per month', 'AstraOral AI classification', 'PDF clinical reports', 'Basic result dashboard', 'Email support'], False, 'Start Free Trial'),
+        ('Clinic', '$199', '/mo', 'For multi-chair clinics and dental groups.', ['14-day free trial', '1,000 diagnoses per month', 'Multi-image upload', 'GradCAM + LIME explainability', 'Progression AI tracking', 'Video follow-up workflow', 'Priority support'], True, 'Start Free Trial'),
+        ('Enterprise', 'Custom', '', 'For hospitals and screening networks.', ['On-premise or private VPC deployment', 'Unlimited seats and diagnoses', 'FHIR/API and folder connectors', 'Custom report templates', 'Security and compliance review', 'Dedicated success engineer'], False, 'Book Demo')
+      ] %}
+      {% for name, price, suffix, desc, features, featured, cta in plans %}
+      <article class="pricing-card {% if featured %}featured{% endif %} reveal-on-scroll">
+        <span class="featured-badge">{{ 'Most Popular' if featured else 'OralAID Plan' }}</span>
+        <h3 style="font-weight:800;margin:22px 0 8px">{{ name }}</h3>
+        <p style="color:var(--text-secondary);margin:0">{{ desc }}</p>
+        <div class="price">{{ price }}<span>{{ suffix }}</span></div>
+        <ul class="feature-list">
+          {% for item in features %}
+          <li><i class="ti ti-check"></i><span>{{ item }}</span></li>
+          {% endfor %}
+        </ul>
+        <a href="{{ url_for('demo_booking') if name == 'Enterprise' else url_for('register') }}" class="btn {{ 'btn-primary' if featured else 'btn-outline-primary' }} w-100">{{ cta }}</a>
+      </article>
+      {% endfor %}
+    </div>
+
+    <div class="enterprise-banner mt-5 reveal-on-scroll">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+          <div class="section-label mb-2" style="color:#bfe8ff">Enterprise</div>
+          <h2 style="font-weight:800;margin:0">Deploy OralAID on your on-premise servers.</h2>
+          <p style="opacity:.78;margin:12px 0 0">Patient images and records stay inside your hospital network while clinicians receive instant AI results, reports, and progression tracking.</p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+          <a href="{{ url_for('demo_booking') }}" class="btn btn-light btn-lg">Talk to Sales</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-5 pt-4 reveal-on-scroll">
+      <div class="section-label">Feature Matrix</div>
+      <h2 style="font-weight:800">What each plan includes</h2>
+    </div>
+    <div class="comparison-card mt-4 reveal-on-scroll">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 text-center">
+          <thead>
+            <tr>
+              <th class="text-start">Feature</th>
+              <th>Starter</th>
+              <th>Clinic</th>
+              <th>Enterprise</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set rows = [
+              ('Free trial', true, true, true),
+              ('AstraOral AI diagnosis', true, true, true),
+              ('PDF reports', true, true, true),
+              ('GradCAM + LIME explainability', false, true, true),
+              ('USB/webcam capture workflow', true, true, true),
+              ('Longitudinal progression AI', false, true, true),
+              ('Data source connectors', false, false, true),
+              ('On-premise deployment', false, false, true),
+              ('Dedicated success engineer', false, false, true)
+            ] %}
+            {% for label, starter, clinic, enterprise in rows %}
+            <tr>
+              <td class="text-start" style="font-weight:700">{{ label }}</td>
+              {% for enabled in [starter, clinic, enterprise] %}
+              <td>{% if enabled %}<i class="ti ti-check text-primary"></i>{% else %}<i class="ti ti-minus text-muted"></i>{% endif %}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

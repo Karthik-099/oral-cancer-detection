@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Results - OralAID{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <div class="section-label">Results</div>
+    <h1 style="font-size:28px;font-weight:700;margin:0">Diagnosis Results</h1>
+    <p class="mb-0" style="color:var(--text-secondary)">Review AI outputs, confidence, and clinician verification.</p>
+  </div>
+  <a href="{{ url_for('diagnose') }}" class="btn btn-primary"><i class="ti ti-stethoscope me-2"></i>New Diagnosis</a>
+</div>
+
+<section class="card">
+  <div class="card-header">All Results</div>
+  <div class="card-body p-0">
+    {% if diagnoses %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr><th>Patient</th><th>Date</th><th>Lesion Class</th><th>Risk</th><th>Confidence</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for d in diagnoses %}
+          <tr>
+            <td><strong>{{ d.patient.name }}</strong></td>
+            <td style="color:var(--text-secondary)">{{ d.created_at.strftime('%b %d, %Y') }}</td>
+            <td>{{ d.ai_prediction }}</td>
+            <td><span class="badge badge-risk-{% if d.risk_level=='High-risk' %}high{% elif d.risk_level=='Medium-risk' %}medium{% else %}low{% endif %}">{{ d.risk_level }}</span></td>
+            <td>{{ '%.1f'|format((d.ai_confidence or 0) * 100) }}%</td>
+            <td><a href="{{ url_for('result', diagnosis_id=d.diagnosis_id) }}" style="font-weight:700">View Result</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="ti ti-file-analytics" style="font-size:3rem;color:var(--primary);opacity:0.28"></i>
+      <h5 class="mt-3">No results yet</h5>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

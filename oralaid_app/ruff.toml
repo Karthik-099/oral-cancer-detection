@@ -1,0 +1,10 @@
+line-length = 120
+target-version = "py310"
+include = ["app_fastapi.py", "security.py", "inference/**/*.py", "tests/**/*.py"]
+
+[lint]
+select = ["E", "F", "W", "B", "S", "I", "UP"]
+ignore = ["S101", "B008", "UP007", "UP006", "UP035", "E501", "S311", "B904", "S104"]
+
+[lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]

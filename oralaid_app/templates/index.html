@@ -1,0 +1,663 @@
+{% extends "base.html" %}
+{% block title %}OralAID — Enterprise Oral Cancer Screening AI{% endblock %}
+
+{% block extra_css %}
+<style>
+  .landing-hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 84% 12%, rgba(55,138,221,0.20), transparent 34%),
+      linear-gradient(180deg, #ffffff 0%, #f4faff 58%, #ffffff 100%);
+    border-bottom: 1px solid rgba(14,109,180,0.12);
+    padding: 92px 0 42px;
+  }
+
+  .landing-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(14,109,180,0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(14,109,180,0.055) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(180deg, #000 0%, transparent 82%);
+    pointer-events: none;
+  }
+
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 0.86fr);
+    gap: 64px;
+    align-items: center;
+  }
+
+  .hero-title {
+    max-width: 900px;
+    margin: 0 0 22px;
+    font-size: clamp(3.2rem, 7vw, 6.9rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+  }
+
+  .shine-word {
+    position: relative;
+    color: var(--primary-dark);
+    background: linear-gradient(100deg, var(--primary-dark), #13a3ec 42%, #ffffff 50%, #0e6db4 62%, var(--primary-dark));
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: wordShine 4.8s ease-in-out infinite;
+  }
+
+  @keyframes wordShine {
+    0%, 30% { background-position: 100% 50%; }
+    65%, 100% { background-position: 0% 50%; }
+  }
+
+  .hero-subtitle {
+    max-width: 760px;
+    color: var(--text-secondary);
+    font-size: 1.18rem;
+    line-height: 1.75;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 32px;
+  }
+
+  .trust-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 28px;
+  }
+
+  .trust-pill {
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.82);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--primary-dark);
+    font-size: 0.82rem;
+    font-weight: 800;
+    box-shadow: var(--shadow);
+  }
+
+  .clinical-stage {
+    position: relative;
+  }
+
+  .clinical-card {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 30px 90px rgba(14,109,180,0.18);
+  }
+
+  .clinical-card img {
+    width: 100%;
+    aspect-ratio: 1 / 0.84;
+    display: block;
+    object-fit: cover;
+  }
+
+  .analysis-overlay {
+    position: absolute;
+    inset: auto 16px 16px 16px;
+    padding: 16px;
+    color: #fff;
+    background: rgba(8, 34, 56, 0.82);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 8px;
+    backdrop-filter: blur(12px);
+  }
+
+  .scan-beam {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(14,109,180,0.34) 48%, transparent 52%);
+    animation: scanMove 3.2s ease-in-out infinite;
+  }
+
+  @keyframes scanMove {
+    0% { transform: translateY(-100%); }
+    56%, 100% { transform: translateY(100%); }
+  }
+
+  .hero-metric-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 46px;
+  }
+
+  .hero-metric {
+    padding: 18px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+
+  .hero-metric strong {
+    display: block;
+    color: var(--primary);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  .hero-metric span {
+    display: block;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .landing-section {
+    padding: 92px 0;
+    background: #fff;
+  }
+
+  .landing-section.alt {
+    background: linear-gradient(180deg, #f6fbff, #ffffff);
+  }
+
+  .section-head {
+    max-width: 780px;
+    margin-bottom: 38px;
+  }
+
+  .section-head h2 {
+    margin: 10px 0 0;
+    font-size: clamp(2rem, 4vw, 3.8rem);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+  }
+
+  .section-head p {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    margin-top: 14px;
+  }
+
+  .enterprise-grid,
+  .services-grid,
+  .case-grid,
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .platform-card,
+  .service-card,
+  .case-card,
+  .price-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 250px;
+    padding: 26px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+
+  .platform-card::after,
+  .service-card::after,
+  .price-card::after {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent), #b8e3ff);
+  }
+
+  .card-index {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 6px;
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 800;
+  }
+
+  .platform-card h3,
+  .service-card h3,
+  .case-card h3,
+  .price-card h3 {
+    margin: 20px 0 10px;
+    font-size: 1.18rem;
+    font-weight: 800;
+  }
+
+  .platform-card p,
+  .service-card p,
+  .case-card p {
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .data-console {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 22px;
+    align-items: stretch;
+  }
+
+  .source-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .source-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 15px 16px;
+    color: var(--text-primary);
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-weight: 800;
+    transition: all 180ms ease;
+  }
+
+  .source-button:hover,
+  .source-button.active {
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+  }
+
+  .result-console {
+    min-height: 360px;
+    padding: 24px;
+    color: #dff4ff;
+    background:
+      linear-gradient(135deg, rgba(8,34,56,0.96), rgba(11,81,130,0.92)),
+      var(--primary-dark);
+    border: 1px solid rgba(14,109,180,0.24);
+    border-radius: 8px;
+    box-shadow: 0 24px 70px rgba(10,79,130,0.22);
+  }
+
+  .console-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+  }
+
+  .console-row span:first-child {
+    color: rgba(223,244,255,0.72);
+  }
+
+  .who-band {
+    color: #fff;
+    background:
+      linear-gradient(135deg, rgba(7,39,65,0.96), rgba(14,109,180,0.92)),
+      var(--primary);
+    border-radius: 8px;
+    padding: 34px;
+    box-shadow: 0 24px 80px rgba(14,109,180,0.2);
+  }
+
+  .quote {
+    color: rgba(255,255,255,0.92);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: clamp(1.55rem, 3vw, 2.55rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  .partner-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .partner-logo {
+    min-height: 76px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--primary-dark);
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 800;
+    box-shadow: var(--shadow);
+  }
+
+  .price-card.featured {
+    border-color: var(--primary);
+    box-shadow: 0 26px 82px rgba(14,109,180,0.18);
+  }
+
+  .price {
+    margin: 18px 0 4px;
+    color: var(--primary);
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 2.7rem;
+    font-weight: 800;
+  }
+
+  .price small {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .plan-list {
+    display: grid;
+    gap: 10px;
+    margin: 22px 0 24px;
+    padding: 0;
+    list-style: none;
+    color: var(--text-secondary);
+  }
+
+  .plan-list li {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  @media (max-width: 991.98px) {
+    .hero-grid,
+    .data-console {
+      grid-template-columns: 1fr;
+    }
+    .enterprise-grid,
+    .services-grid,
+    .case-grid,
+    .pricing-grid {
+      grid-template-columns: 1fr;
+    }
+    .partner-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero-metric-row { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 575.98px) {
+    .landing-hero { padding-top: 62px; }
+    .hero-actions .btn { width: 100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="landing-hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="reveal-on-scroll">
+        <div class="section-label mb-3">Enterprise Clinical AI SaaS</div>
+        <h1 class="hero-title">
+          Deploy <span class="shine-word">AstraOral AI</span> inside your hospital network.
+        </h1>
+        <p class="hero-subtitle">
+          OralAID helps hospitals and dental networks detect suspicious oral lesions earlier with explainable AI, on-premise deployment, real-time patient data connectors, and longitudinal progression tracking.
+        </p>
+        <div class="hero-actions">
+          <a href="{{ url_for('demo_booking') }}" class="btn btn-primary btn-lg">
+            <i class="ti ti-calendar-event me-2"></i>Book Enterprise Demo
+          </a>
+          <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+            <i class="ti ti-sparkles me-2"></i>Start Free Trial
+          </a>
+        </div>
+        <div class="trust-strip">
+          <span class="trust-pill">On-premise ready</span>
+          <span class="trust-pill">Patient data stays local</span>
+          <span class="trust-pill">Explainable AI reports</span>
+          <span class="trust-pill">Tablet-friendly triage</span>
+        </div>
+      </div>
+
+      <div class="clinical-stage reveal-on-scroll">
+        <div class="clinical-card">
+          <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Leukoplakia.jpg?width=1200" alt="Clinical oral leukoplakia screening image from National Cancer Institute" loading="lazy">
+          <div class="scan-beam"></div>
+          <div class="analysis-overlay">
+            <div class="d-flex justify-content-between gap-3 mb-2">
+              <span style="font-weight:800">AstraOral AI</span>
+              <span class="badge bg-success">Live</span>
+            </div>
+            <div class="console-row"><span>Detected class</span><strong>Leukoplakia pattern</strong></div>
+            <div class="console-row"><span>Explainability</span><strong>GradCAM + LIME</strong></div>
+            <div class="console-row"><span>Deployment</span><strong>Hospital server</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-metric-row">
+      <div class="hero-metric reveal-on-scroll"><strong>389,846</strong><span>lip and oral cavity cancer cases estimated globally in 2022</span></div>
+      <div class="hero-metric reveal-on-scroll"><strong>188,438</strong><span>estimated deaths globally in 2022</span></div>
+      <div class="hero-metric reveal-on-scroll"><strong>607+</strong><span>screenings represented in the current OralAID workspace</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section" id="platform">
+  <div class="container">
+    <div class="section-head reveal-on-scroll">
+      <div class="section-label">How OralAID Solves Screening</div>
+      <h2>From image capture to referral-ready evidence.</h2>
+      <p>Designed for repeated clinical use: quiet, fast, auditable, and secure enough for enterprise hospital IT.</p>
+    </div>
+    <div class="enterprise-grid">
+      {% set platform = [
+        ('01', 'Capture', 'Upload intraoral images, tablet webcam frames, or USB camera captures directly into the diagnostic queue.'),
+        ('02', 'Analyze', 'AstraOral AI runs classification, lesion segmentation, severity scoring, and explainability without manual risk factor toggles.'),
+        ('03', 'Act', 'Generate PDF reports, prioritize high-risk cases, schedule follow-up, and track progression over time.')
+      ] %}
+      {% for n, title, desc in platform %}
+      <article class="platform-card reveal-on-scroll">
+        <div class="card-index">{{ n }}</div>
+        <h3>{{ title }}</h3>
+        <p>{{ desc }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="landing-section alt" id="data">
+  <div class="container">
+    <div class="section-head reveal-on-scroll">
+      <div class="section-label">Real-Time Data Source Connector</div>
+      <h2>Connect clinical data. Get results instantly.</h2>
+      <p>Preview how OralAID can ingest patient records, image folders, or FHIR feeds and return triage-ready AI results in real time.</p>
+    </div>
+    <div class="data-console">
+      <div class="source-list reveal-on-scroll">
+        <button class="source-button active" type="button" data-source="FHIR API" data-patient="Hospital FHIR patient stream" data-result="High priority screening batch ready" data-latency="1.8 sec">
+          FHIR API <i class="ti ti-plug-connected"></i>
+        </button>
+        <button class="source-button" type="button" data-source="CSV Registry" data-patient="Outreach camp patient registry" data-result="46 records normalized" data-latency="3.2 sec">
+          CSV Registry <i class="ti ti-table"></i>
+        </button>
+        <button class="source-button" type="button" data-source="Secure Image Folder" data-patient="Intraoral image capture folder" data-result="12 new images queued" data-latency="0.9 sec">
+          Secure Image Folder <i class="ti ti-folder"></i>
+        </button>
+        <button class="source-button" type="button" data-source="Clinic Tablet Sync" data-patient="Offline tablet screening session" data-result="Severity scores synchronized" data-latency="2.4 sec">
+          Clinic Tablet Sync <i class="ti ti-device-ipad"></i>
+        </button>
+      </div>
+      <div class="result-console reveal-on-scroll">
+        <div class="section-label mb-3" style="color:#9ad9ff">Live Connector Result</div>
+        <div class="console-row"><span>Source</span><strong id="dsSource">FHIR API</strong></div>
+        <div class="console-row"><span>Patient stream</span><strong id="dsPatient">Hospital FHIR patient stream</strong></div>
+        <div class="console-row"><span>AI status</span><strong id="dsResult">High priority screening batch ready</strong></div>
+        <div class="console-row"><span>Latency</span><strong id="dsLatency">1.8 sec</strong></div>
+        <div class="mt-4">
+          <div class="progress" style="height:10px;background:rgba(255,255,255,0.16)">
+            <div class="progress-bar" id="dsBar" style="width:76%"></div>
+          </div>
+          <p class="mt-3 mb-0" style="color:rgba(223,244,255,0.76)">Real implementations connect to hospital-approved APIs and storage locations.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section" id="services">
+  <div class="container">
+    <div class="section-head reveal-on-scroll">
+      <div class="section-label">Services</div>
+      <h2>Built for enterprise deployment, not a demo sandbox.</h2>
+    </div>
+    <div class="services-grid">
+      {% set services = [
+        ('On-Premise AI Deployment', 'Install OralAID on hospital-owned servers so patient images, reports, and audit data remain inside your network.'),
+        ('Workflow Integration', 'Connect patient registries, image storage, appointment workflows, and PDF reporting into existing clinical operations.'),
+        ('Clinical Governance', 'Role-based access, evidence capture, retraining feedback, and explainability records for review boards.')
+      ] %}
+      {% for title, desc in services %}
+      <article class="service-card reveal-on-scroll">
+        <div class="card-index"><i class="ti ti-shield-check"></i></div>
+        <h3>{{ title }}</h3>
+        <p>{{ desc }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="landing-section alt">
+  <div class="container">
+    <div class="who-band reveal-on-scroll">
+      <div class="section-label mb-3" style="color:#bfe8ff">WHO-aligned urgency</div>
+      <p class="quote">“Early detection changes the pathway: from late referral to timely action.”</p>
+      <div class="row g-3 mt-4">
+        <div class="col-md-4"><strong style="font-size:2rem">389,846</strong><div style="opacity:.78">new lip/oral cavity cancer cases in 2022</div></div>
+        <div class="col-md-4"><strong style="font-size:2rem">188,438</strong><div style="opacity:.78">deaths in 2022</div></div>
+        <div class="col-md-4"><strong style="font-size:2rem">13th</strong><div style="opacity:.78">rank for oral cancer including lip, mouth, and oropharynx</div></div>
+      </div>
+      <div class="mt-3" style="font-size:0.78rem;opacity:.72">Source: WHO oral health fact sheet and IARC/GLOBOCAN 2022.</div>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="container">
+    <div class="section-head reveal-on-scroll">
+      <div class="section-label">Case Studies</div>
+      <h2>Use cases for hospitals and dental networks.</h2>
+    </div>
+    <div class="case-grid">
+      {% set cases = [
+        ('Regional dental network', 'Standardized oral lesion screening across branches with clinician review and PDF reports.'),
+        ('Hospital oncology unit', 'Prioritize high-risk oral lesions for referral using explainability and progression trend data.'),
+        ('Community screening camps', 'Tablet-first offline severity scoring with later sync into hospital infrastructure.')
+      ] %}
+      {% for title, desc in cases %}
+      <article class="case-card reveal-on-scroll">
+        <div class="section-label">Case Study</div>
+        <h3>{{ title }}</h3>
+        <p>{{ desc }}</p>
+        <a href="{{ url_for('case_studies') }}" class="btn btn-sm btn-outline-primary mt-4">Read More</a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="landing-section alt">
+  <div class="container">
+    <div class="section-head reveal-on-scroll">
+      <div class="section-label">Technology Partnerships</div>
+      <h2>Deploy on the infrastructure your hospital already trusts.</h2>
+      <p>OralAID is designed for cloud, private VPC, and on-premise environments across major enterprise platforms.</p>
+    </div>
+    <div class="partner-grid reveal-on-scroll">
+      {% for name in ['Google Cloud', 'Microsoft Azure', 'Oracle Cloud', 'DigitalOcean', 'AWS', 'HPE On-Premise'] %}
+      <div class="partner-logo">{{ name }}</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="landing-section" id="pricing">
+  <div class="container">
+    <div class="section-head reveal-on-scroll">
+      <div class="section-label">Plans</div>
+      <h2>Free trial, then scale to enterprise deployment.</h2>
+    </div>
+    <div class="pricing-grid">
+      {% set plans = [
+        ('Starter', '$49', 'For single-chair clinics validating AI screening.', ['14-day free trial', '100 diagnoses/month', 'AstraOral AI diagnosis', 'PDF reports', 'Email support'], False, 'Start Free Trial'),
+        ('Clinic', '$199', 'For growing dental practices and multi-chair clinics.', ['14-day free trial', '1,000 diagnoses/month', 'Multi-image upload', 'Video consultation', 'Progression AI'], True, 'Start Free Trial'),
+        ('Enterprise', 'Custom', 'For hospitals requiring privacy, integration, and governance.', ['On-premise deployment', 'FHIR/API integrations', 'Unlimited seats', 'Dedicated success team', 'Security review package'], False, 'Book Demo')
+      ] %}
+      {% for name, price, desc, items, featured, cta in plans %}
+      <article class="price-card {% if featured %}featured{% endif %} reveal-on-scroll">
+        <div class="section-label">{{ 'Most Popular' if featured else 'Plan' }}</div>
+        <h3>{{ name }}</h3>
+        <p style="color:var(--text-secondary);margin:0">{{ desc }}</p>
+        <div class="price">{{ price }}{% if price != 'Custom' %}<small>/mo</small>{% endif %}</div>
+        <ul class="plan-list">
+          {% for item in items %}
+          <li><i class="ti ti-check" style="color:var(--success);margin-top:3px"></i><span>{{ item }}</span></li>
+          {% endfor %}
+        </ul>
+        <a href="{{ url_for('demo_booking') if name == 'Enterprise' else url_for('register') }}" class="btn {{ 'btn-primary' if featured else 'btn-outline-primary' }} w-100">{{ cta }}</a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="landing-section alt">
+  <div class="container text-center reveal-on-scroll">
+    <div class="section-label">Private Clinical AI</div>
+    <h2 style="font-size:clamp(2rem,4vw,4rem);font-weight:800;letter-spacing:-.035em;margin:10px auto 18px;max-width:900px">
+      Patient data should not leave the hospital to get AI results.
+    </h2>
+    <p style="color:var(--text-secondary);max-width:760px;margin:0 auto 30px">
+      We deploy OralAID on your on-premise servers, private cloud, or approved VPC so screening images and patient records stay under your governance.
+    </p>
+    <a href="{{ url_for('demo_booking') }}" class="btn btn-primary btn-lg">Talk to Deployment Team</a>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.source-button').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.source-button').forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
+      document.getElementById('dsSource').textContent = button.dataset.source;
+      document.getElementById('dsPatient').textContent = button.dataset.patient;
+      document.getElementById('dsResult').textContent = button.dataset.result;
+      document.getElementById('dsLatency').textContent = button.dataset.latency;
+      const width = 52 + Math.round(Math.random() * 38);
+      document.getElementById('dsBar').style.width = width + '%';
+    });
+  });
+</script>
+{% endblock %}

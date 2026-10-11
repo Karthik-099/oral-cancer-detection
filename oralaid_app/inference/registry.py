@@ -152,7 +152,11 @@ def download_weights(model_id):
     log.info("downloading %s weights", model_id)
     tmp = target.with_suffix(".part")
     digest = hashlib.sha256()
-    with urllib.request.urlopen(url, timeout=60) as r, open(tmp, "wb") as f:  # noqa: S310  # nosec B310
+    req = urllib.request.Request(url)  # noqa: S310  # nosec B310 - https enforced above
+    token = os.environ.get("HF_TOKEN")
+    if token and url.startswith("https://huggingface.co/"):
+        req.add_header("Authorization", f"Bearer {token}")  # private model repo
+    with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:  # noqa: S310  # nosec B310
         for chunk in iter(lambda: r.read(1 << 20), b""):
             digest.update(chunk)
             f.write(chunk)

@@ -6,7 +6,7 @@
 import { writeFileSync } from "node:fs";
 
 const dist = new URL("../dist/", import.meta.url);
-const site = (process.env.SITE_URL || process.env.URL || "https://oralaid.ai").replace(/\/$/, "");
+const site = (process.env.SITE_URL || process.env.URL || "https://oral-cancer-detect.netlify.app").replace(/\/$/, "");
 const api = (process.env.ORALAID_API_ORIGIN || "").replace(/\/$/, "");
 
 const redirects = [];

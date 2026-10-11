@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge, Button } from "@/components/ui";
 import { CodeBlock, CodeTabs } from "@/components/site/CodeBlock";
 
-const BASE = "https://oralaid.ai";
+const BASE = "https://oral-cancer-detect.netlify.app";
 
 const TOC = [
   { id: "overview", label: "Overview" },

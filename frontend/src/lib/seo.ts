@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE = "https://oralaid.ai";
+const SITE = "https://oral-cancer-detect.netlify.app";
 
 /** Per-route title, description and canonical URL for crawlers and link previews. */
 export function useSeo(title: string, description?: string, opts: { noindex?: boolean } = {}) {

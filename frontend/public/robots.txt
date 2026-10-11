@@ -6,4 +6,4 @@ Disallow: /register
 Disallow: /api/
 Disallow: /files/
 
-Sitemap: https://oralaid.ai/sitemap.xml
+Sitemap: https://oral-cancer-detect.netlify.app/sitemap.xml

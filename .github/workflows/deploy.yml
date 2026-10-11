@@ -75,6 +75,8 @@ jobs:
         env:
           ORALAID_API_ORIGIN: ${{ vars.ORALAID_API_ORIGIN }}
           SITE_URL: ${{ vars.SITE_URL }}
+          ORALAID_ONNX_URL: ${{ vars.ORALAID_ONNX_URL }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
       - id: deploy
         name: Netlify deploy
         env:

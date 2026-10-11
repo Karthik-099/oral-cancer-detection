@@ -115,8 +115,8 @@ export function AnalysisMockup({ className }: { className?: string }) {
               <span className="text-xs text-muted">Lateral tongue</span>
               <RiskBadge tier="high" size="sm" />
             </div>
-            <div className="mt-8 flex justify-center">
-              <ProbabilityMeter value={0.74} threshold={0.3} high={0.55} size={160} />
+            <div className="mt-3 flex justify-center">
+              <ProbabilityMeter value={0.74} threshold={0.3} high={0.55} size={180} />
             </div>
             <dl className="mt-4 space-y-3 text-xs">
               <div>

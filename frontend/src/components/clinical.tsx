@@ -27,7 +27,8 @@ export function ProbabilityMeter({ value, threshold, high, size = 220 }: { value
     const a0 = Math.PI * (1 - from);
     const a1 = Math.PI * (1 - to);
     const p = (a: number) => `${cx + r * Math.cos(a)} ${cy - r * Math.sin(a)}`;
-    return `M ${p(a0)} A ${r} ${r} 0 ${to - from > 0.5 ? 1 : 0} 1 ${p(a1)}`;
+    // The gauge spans at most 180 degrees, so the SVG large-arc flag is always 0.
+    return `M ${p(a0)} A ${r} ${r} 0 0 1 ${p(a1)}`;
   };
   const tier: Tier = value >= high ? "high" : value >= threshold ? "moderate" : "low";
   const angle = Math.PI * (1 - value);

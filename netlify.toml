@@ -1,8 +1,10 @@
 # Netlify configuration for the OralAID web app (frontend/).
 #
-# Required site environment variables (Site settings -> Environment variables):
-#   ORALAID_API_ORIGIN   e.g. https://api.oralaid.ai  (backend; proxied at /api and /files)
-#   SITE_URL             e.g. https://oralaid.ai      (canonical URL for the sitemap)
+# Site environment variables (Site configuration -> Environment variables):
+#   ORALAID_ONNX_URL     URL of oralnet-b4.onnx (e.g. a private Hugging Face repo "resolve" link)
+#   HF_TOKEN             read token, only if that repo is private
+#   SITE_URL             https://oral-cancer-detect.netlify.app
+#   ORALAID_API_ORIGIN   optional, later: backend URL for accounts (proxied at /api and /files)
 #
 # The API is proxied through Netlify so the browser only talks to your domain:
 # no CORS, the backend origin stays private, and static assets come from
@@ -36,6 +38,20 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
+# On-device model: shard names contain the model hash, so they never change.
+[[headers]]
+  for = "/model/*.bin"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+[[headers]]
+  for = "/model/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+[[headers]]
+  for = "/ort/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
 [[headers]]
   for = "/*.svg"
   [headers.values]
@@ -61,7 +77,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
     Cross-Origin-Opener-Policy = "same-origin"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-2K2feoalFjARBBFhyb3zCrfyNVJmqro8yIrkNQdQKOE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-2K2feoalFjARBBFhyb3zCrfyNVJmqro8yIrkNQdQKOE='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
 
 # Redirects are generated at build time into dist/_redirects by
 # frontend/scripts/postbuild.mjs (API proxy + SPA fallback).

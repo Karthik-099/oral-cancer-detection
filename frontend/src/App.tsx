@@ -6,6 +6,7 @@ import { Toaster } from "@/components/Toast";
 import { Spinner } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { checkBackend } from "@/lib/backend";
 import { syncThresholds } from "@/components/app/kit";
 import Home from "@/pages/site/Home";
 
@@ -20,6 +21,7 @@ const Security = lazy(() => import("@/pages/site/Security"));
 const About = lazy(() => import("@/pages/site/About"));
 const Contact = lazy(() => import("@/pages/site/Contact"));
 const Legal = lazy(() => import("@/pages/site/Legal"));
+const Screen = lazy(() => import("@/pages/site/Screen"));
 const NotFound = lazy(() => import("@/pages/site/NotFound"));
 
 const Login = lazy(() => import("@/pages/app/Login"));
@@ -37,9 +39,11 @@ const Fallback = () => <div className="grid min-h-[60vh] place-items-center"><Sp
 
 export default function App() {
   const bootstrap = useAuth((s) => s.bootstrap);
-  useEffect(() => { bootstrap(); }, [bootstrap]);
+  useEffect(() => { checkBackend().then((s) => { if (s === "online") bootstrap(); }); }, [bootstrap]);
   useEffect(() => {
-    api.models().then((m) => syncThresholds(m.threshold, m.high_risk_threshold)).catch(() => { /* defaults apply */ });
+    checkBackend().then((s) => {
+      if (s === "online") api.models().then((m) => syncThresholds(m.threshold, m.high_risk_threshold)).catch(() => { /* defaults apply */ });
+    });
   }, []);
 
   return (
@@ -48,6 +52,7 @@ export default function App() {
         <Routes>
           <Route element={<SiteLayout />}>
             <Route index element={<Home />} />
+            <Route path="screen" element={<Screen />} />
             <Route path="platform" element={<Platform />} />
             <Route path="models" element={<Models />} />
             <Route path="deployment" element={<Deployment />} />

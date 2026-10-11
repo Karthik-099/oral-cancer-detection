@@ -62,3 +62,7 @@ node_modules/
 .ruff_cache/
 test-results/
 loadtests/results/
+frontend/public/ort/
+frontend/public/model/
+src/**/lime_results/
+src/**/results_final/

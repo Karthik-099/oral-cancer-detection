@@ -1,3 +1,4 @@
+import { useBackend } from "@/lib/backend";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -19,6 +20,7 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
             className="w-full max-w-[400px]">
             <h1 className="display text-[40px] sm:text-[44px]">{title}</h1>
             <p className="mt-2 text-sm text-muted">{subtitle}</p>
+            <BackendNotice />
             <div className="mt-8">{children}</div>
             {footer && <div className="mt-8 text-center text-sm text-muted">{footer}</div>}
           </motion.div>
@@ -99,6 +101,20 @@ function MiniPreview() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function BackendNotice() {
+  const status = useBackend();
+  if (status !== "offline") return null;
+  return (
+    <div className="mt-6 rounded-xl border border-brand/25 bg-brand/5 p-4 text-sm">
+      <p className="font-medium">Accounts are coming soon.</p>
+      <p className="mt-1 text-muted">
+        You can already screen photos for free, privately on your own device, with no account.{" "}
+        <Link to="/screen" className="font-medium text-brand hover:underline">Open the screening tool</Link>
+      </p>
     </div>
   );
 }

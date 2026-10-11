@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Menu, Moon, Sun, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { useBackend } from "@/lib/backend";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
@@ -11,6 +12,7 @@ import { ButtonLink } from "./ui";
 import { toast } from "./Toast";
 
 const NAV = [
+  { to: "/screen", label: "Screen free" },
   { to: "/platform", label: "Platform" },
   { to: "/models", label: "Models" },
   { to: "/deployment", label: "Deployment" },
@@ -33,6 +35,7 @@ function Header() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const user = useAuth((s) => s.user);
+  const backend = useBackend();
   const { pathname } = useLocation();
 
   useEffect(() => setOpen(false), [pathname]);
@@ -57,7 +60,9 @@ function Header() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeButton className="hidden sm:grid" />
-          {user ? (
+          {backend !== "online" ? (
+            <ButtonLink to="/screen" size="sm" variant="ink" className="hidden sm:inline-flex">Start screening <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
+          ) : user ? (
             <ButtonLink to="/app" size="sm" variant="ink">Open app <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
           ) : (
             <>
@@ -77,8 +82,14 @@ function Header() {
             <div className="container flex flex-col py-3">
               {NAV.map((n) => <Link key={n.to} to={n.to} className="rounded-lg px-2 py-3 text-[15px]">{n.label}</Link>)}
               <div className="mt-3 flex gap-2 border-t border-line pt-4">
-                <ButtonLink to={user ? "/app" : "/register"} variant="ink" className="flex-1">{user ? "Open app" : "Start free"}</ButtonLink>
-                {!user && <ButtonLink to="/login" variant="secondary" className="flex-1">Sign in</ButtonLink>}
+                {backend !== "online" ? (
+                  <ButtonLink to="/screen" variant="ink" className="flex-1">Start screening</ButtonLink>
+                ) : (
+                  <>
+                    <ButtonLink to={user ? "/app" : "/register"} variant="ink" className="flex-1">{user ? "Open app" : "Start free"}</ButtonLink>
+                    {!user && <ButtonLink to="/login" variant="secondary" className="flex-1">Sign in</ButtonLink>}
+                  </>
+                )}
                 <ThemeButton />
               </div>
             </div>

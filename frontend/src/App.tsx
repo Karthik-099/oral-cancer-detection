@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import SiteLayout from "@/components/SiteLayout";
 import { RequireAuth } from "@/components/AppShell";
 import { Toaster } from "@/components/Toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Spinner } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -21,7 +22,6 @@ const Security = lazy(() => import("@/pages/site/Security"));
 const About = lazy(() => import("@/pages/site/About"));
 const Contact = lazy(() => import("@/pages/site/Contact"));
 const Legal = lazy(() => import("@/pages/site/Legal"));
-const Screen = lazy(() => import("@/pages/site/Screen"));
 const NotFound = lazy(() => import("@/pages/site/NotFound"));
 
 const Login = lazy(() => import("@/pages/app/Login"));
@@ -48,11 +48,11 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Suspense fallback={<Fallback />}>
         <Routes>
           <Route element={<SiteLayout />}>
             <Route index element={<Home />} />
-            <Route path="screen" element={<Screen />} />
             <Route path="platform" element={<Platform />} />
             <Route path="models" element={<Models />} />
             <Route path="deployment" element={<Deployment />} />
@@ -80,6 +80,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      </ErrorBoundary>
       <Toaster />
     </BrowserRouter>
   );

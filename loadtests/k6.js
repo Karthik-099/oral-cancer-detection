@@ -36,6 +36,6 @@ export default function ({ token }) {
   check(http.get(`${BASE}/api/health`, { tags: { kind: "health" } }), { "health 200": (r) => r.status === 200 });
   check(http.get(`${BASE}/api/dashboard`, auth), { "dashboard 200": (r) => r.status === 200 });
   check(http.get(`${BASE}/api/cases?limit=25`, auth), { "cases 200": (r) => r.status === 200 });
-  check(http.get(`${BASE}/api/cases`), { "unauthenticated is 401": (r) => r.status === 401 });
+  check(http.get(`${BASE}/api/cases`, { responseCallback: http.expectedStatuses(401) }), { "unauthenticated is 401": (r) => r.status === 401 });
   sleep(1);
 }

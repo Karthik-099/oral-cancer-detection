@@ -2,13 +2,15 @@ name: CI
 
 on:
   push:
-    branches: [main, prod]
+    branches: [main]
   pull_request:
   workflow_call:
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Keyed by workflow name so a CI run called from Deploy never cancels a direct one.
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -16,62 +18,54 @@ permissions:
 jobs:
   backend:
     name: Backend (lint + tests)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
     defaults: { run: { working-directory: oralaid_app } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11", cache: pip, cache-dependency-path: oralaid_app/requirements-*.txt }
-      - run: pip install -r requirements-dev.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: pip install --upgrade pip "setuptools>=84" && pip install -r requirements-dev.txt --extra-index-url https://download.pytorch.org/whl/cpu
       - name: Lint (ruff)
         run: ruff check .
       - name: Unit + API tests
-        # Model tests skip automatically when weights aren't present (they are never committed).
+        # Model tests skip automatically: weights are never committed.
         run: pytest -q --junitxml=../test-results/backend.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with: { name: backend-test-results, path: test-results/ }
 
   frontend:
     name: Frontend (types + tests + build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults: { run: { working-directory: frontend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-        env: { SITE_URL: "https://oralaid.ai", ORALAID_API_ORIGIN: "https://api.example.com" }
+        env: { SITE_URL: "https://oral-cancer-detect.netlify.app" }
       - name: Bundle size budget
         run: |
           total=$(du -sk dist/assets | cut -f1)
           echo "assets: ${total} KB"
           test "$total" -lt 2500 || { echo "::error::Bundle over 2.5 MB budget"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: web-dist, path: frontend/dist, retention-days: 7 }
 
   integration:
     name: Container smoke + load smoke
     needs: [backend, frontend]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v5
       - name: Build image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deploy/Dockerfile
-          tags: oralaid:ci
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: docker build -f deploy/Dockerfile -t oralaid:ci .
       - name: Run container (no model weights in CI)
         run: |
           docker run -d --name oralaid -p 8000:8000 \
@@ -79,7 +73,7 @@ jobs:
             -e ORALAID_CORS_ORIGINS=http://localhost:8000 \
             -e ORALAID_RATE_LIMIT_SCALE=1000 \
             oralaid:ci
-          for i in $(seq 1 30); do curl -fsS localhost:8000/api/health && break; sleep 2; done
+          for i in $(seq 1 60); do curl -fsS localhost:8000/api/health && break; sleep 2; done
       - name: Smoke test routes and headers
         run: |
           set -e
@@ -90,9 +84,9 @@ jobs:
           curl -sI localhost:8000/api/health | grep -qi 'x-content-type-options: nosniff'
           curl -sI localhost:8000/api/health | grep -qi 'x-frame-options: deny'
       - name: k6 smoke (SLO thresholds)
-        uses: grafana/run-k6-action@v1
-        env: { BASE_URL: "http://localhost:8000", PROFILE: smoke }
-        with: { path: loadtests/k6.js }
+        run: |
+          docker run --rm --network host -v "$PWD/loadtests:/scripts:ro" \
+            -e BASE_URL=http://localhost:8000 -e PROFILE=smoke grafana/k6:0.55.0 run /scripts/k6.js
       - name: Container logs
         if: always()
-        run: docker logs oralaid | tail -100
+        run: docker logs oralaid 2>&1 | tail -100

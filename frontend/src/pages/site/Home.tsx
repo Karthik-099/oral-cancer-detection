@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
   AlertTriangle, ArrowRight, ArrowUpRight, Building2, Camera, Cloud, Command, Cpu, FileBarChart2, Fingerprint, GitBranch,
   HardDrive, ImageUp, KeyRound, LineChart, Microscope, MonitorSmartphone, RefreshCw, ScanSearch, Server, ShieldCheck, Sparkles,
   Stethoscope, Timer, Trash2, Upload,
 } from "lucide-react";
-import { fileUrl, type ImageResult } from "@/lib/api";
-import { analyzeOnDevice, OnDeviceError, type LoadProgress } from "@/lib/ondevice";
+import { api, ApiError, fileUrl, type ImageResult } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useSeo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
-import { Reveal } from "@/components/Reveal";
+import { Reveal, Tilt } from "@/components/Reveal";
 import { Badge, Button, ButtonLink, Kbd } from "@/components/ui";
 import { CompareSlider, ProbabilityMeter, QualityBar, RiskBadge } from "@/components/clinical";
 import { CTABand, ClinicalNote, FAQ, IconTile, Section, SectionHeading } from "@/components/site/marketing";
@@ -33,15 +32,16 @@ function Hero() {
             Transparent model cards, including retired models
             <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
           </Link>
-          <h1 className="display mt-7 text-[3.25rem] sm:text-7xl xl:text-[5.5rem]">
-            Catch oral cancer earlier. <em className="italic text-brand">See why.</em>
+          <h1 className="display mt-7 text-[3rem] sm:text-7xl xl:text-[5.25rem]" aria-label="Catch oral cancer earlier. See why.">
+            <AnimatedWords text="Catch oral cancer earlier." />{" "}
+            <AnimatedWords text="See why." delay={0.45} className="text-gradient" />
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
             OralAID is explainable AI screening support for the dental chair. Upload intraoral photos and get a suspicion score,
             a risk tier and a heatmap of exactly what the model looked at, so you can decide who needs a specialist, faster.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <ButtonLink to={user ? "/app" : "/screen"} size="lg">{user ? "Open the app" : "Start screening free"} <ArrowRight className="h-4 w-4" /></ButtonLink>
+            <ButtonLink to={user ? "/app" : "/register"} size="lg">{user ? "Open the app" : "Start free"} <ArrowRight className="h-4 w-4" /></ButtonLink>
             <ButtonLink to="/contact" size="lg" variant="secondary">Book a demo</ButtonLink>
           </div>
           <ul className="mt-10 grid max-w-lg gap-3 text-sm text-muted sm:grid-cols-2">
@@ -49,18 +49,61 @@ function Hero() {
               [ScanSearch, "Heatmap on every analysis"],
               [ShieldCheck, "Clinician stays in control"],
               [Server, "Cloud, private VPC or on-prem"],
-              [Trash2, "Photos never leave your device"],
+              [Trash2, "Demo images deleted in 1 hour"],
             ].map(([Icon, label]) => {
               const I = Icon as typeof ScanSearch;
               return <li key={label as string} className="flex items-center gap-2"><I className="h-4 w-4 text-brand" aria-hidden />{label as string}</li>;
             })}
           </ul>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.9, delay: 0.15, ease: [0.2, 0.7, 0.2, 1] }}>
-          <AnalysisMockup className="mx-auto max-w-xl" />
-        </motion.div>
+        <HeroVisual />
       </div>
     </section>
+  );
+}
+
+/** Headline words rise into place one after another. */
+function AnimatedWords({ text, delay = 0, className }: { text: string; delay?: number; className?: string }) {
+  return (
+    <span aria-hidden>
+      {text.split(" ").map((w, i) => (
+        <span key={i} className="inline-block overflow-hidden pb-[0.08em] align-bottom">
+          <motion.span className={cn("inline-block", className)} initial={{ y: "110%", rotateX: -60, opacity: 0 }}
+            animate={{ y: "0%", rotateX: 0, opacity: 1 }} style={{ transformPerspective: 600 }}
+            transition={{ duration: 0.9, delay: delay + i * 0.08, ease: [0.16, 1, 0.3, 1] }}>
+            {w}{"\u00a0"}
+          </motion.span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** Product mockup in 3D: orbit rings behind, mouse tilt, and it leans back as you scroll. */
+function HeroVisual() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const rotateX = useTransform(scrollYProgress, [0, 1], [0, 28]);
+  const scale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
+  const y = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const opacity = useTransform(scrollYProgress, [0, 0.9], [1, 0.2]);
+  return (
+    <motion.div ref={ref} initial={{ opacity: 0, y: 40, rotateX: 20 }} animate={{ opacity: 1, y: 0, rotateX: 0 }}
+      transition={{ duration: 1.1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }} style={{ transformPerspective: 1200 }} className="relative">
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 grid place-items-center [perspective:900px]">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="absolute rounded-full border border-brand/25 shadow-[0_0_40px_rgb(var(--glow-1)/.15)]"
+            style={{ width: `${110 + i * 22}%`, aspectRatio: "1", transform: `rotateX(72deg) rotateZ(${i * 30}deg)`,
+              animation: `spin-slow ${36 + i * 14}s linear infinite ${i % 2 ? "reverse" : ""}` }} />
+        ))}
+        <div className="absolute h-2/3 w-2/3 rounded-full bg-[radial-gradient(circle,rgb(var(--glow-3)/.35),transparent_65%)] blur-2xl" />
+      </div>
+      <motion.div style={{ rotateX, scale, y, opacity, transformPerspective: 1200 }}>
+        <Tilt max={7}>
+          <AnalysisMockup className="mx-auto max-w-xl" />
+        </Tilt>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -138,19 +181,22 @@ function HowItWorks() {
 type DemoResult = ImageResult & { id: string };
 type DemoState =
   | { phase: "idle" }
-  | { phase: "scanning"; preview: string; progress?: LoadProgress }
+  | { phase: "scanning"; preview: string }
   | { phase: "done"; preview: string; result: DemoResult }
   | { phase: "error"; preview?: string; title: string; body: string };
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
 function explainError(err: unknown): { title: string; body: string } {
-  if (err instanceof OnDeviceError) {
-    switch (err.code) {
-      case "not-oral": return { title: "That doesn't look like an intraoral photo", body: `${err.message} Try a well-lit, in-focus photo of the inside of the mouth.` };
-      case "decode": return { title: "Unsupported file", body: err.message };
-      case "unsupported": return { title: "Browser not supported", body: err.message };
-      default: return { title: "Model unavailable", body: err.message };
+  if (err instanceof ApiError) {
+    switch (err.status) {
+      case 422: return { title: "That doesn't look like an intraoral photo", body: `${err.message} Try a well-lit, in-focus photo of the inside of the mouth.` };
+      case 429: return { title: "Demo limit reached", body: "The public demo allows a few analyses per hour per visitor. Create a free account to keep going." };
+      case 503: return { title: "The AI service is offline", body: "The analysis server is starting up or under maintenance. Please try again in a minute." };
+      case 413: return { title: "Image too large", body: "Please upload an image under 15 MB." };
+      case 415: return { title: "Unsupported file", body: "Use a JPEG, PNG, WebP or HEIC image." };
+      case 0: return { title: "Can't reach the service", body: err.message };
+      default: return { title: "Analysis failed", body: err.message || "Something went wrong. Please try again." };
     }
   }
   return { title: "Analysis failed", body: (err as Error)?.message ?? "Something went wrong." };
@@ -180,7 +226,7 @@ function LiveDemo() {
     setOverlay("gradcam");
     setState({ phase: "scanning", preview });
     try {
-      const result = await analyzeOnDevice(file, (progress) => setState({ phase: "scanning", preview, progress }));
+      const result = await api.demo(file);
       setState({ phase: "done", preview, result });
     } catch (err) {
       setState({ phase: "error", preview, ...explainError(err) });
@@ -205,11 +251,11 @@ function LiveDemo() {
       <div className="relative grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
         <div>
           <SectionHeading eyebrow="Live demo" title={<>Try it on a photo. <em className="italic text-brand">Right here.</em></>}
-            body="Pick an intraoral photo and OralNet-B4 runs right here in your browser: quality check, risk score, Grad-CAM heatmap and region outline." />
+            body="Upload an intraoral photo and run the same production pipeline clinicians use: quality check, OralNet-B4 with test-time augmentation, Grad-CAM heatmap and region outline." />
           <Reveal delay={0.1}>
             <ul className="mt-8 space-y-3 text-sm text-muted">
-              <li className="flex gap-2.5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand" />Processed on your device. The photo is never uploaded or stored.</li>
-              <li className="flex gap-2.5"><Timer className="mt-0.5 h-4 w-4 shrink-0 text-brand" />First run downloads the model once (about 75 MB); after that it's instant and works offline.</li>
+              <li className="flex gap-2.5"><Timer className="mt-0.5 h-4 w-4 shrink-0 text-brand" />Demo images and results are deleted automatically after one hour.</li>
+              <li className="flex gap-2.5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand" />Never used for training. No account needed.</li>
               <li className="flex gap-2.5"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-moderate" />Please do not upload images that identify a person, such as full faces.</li>
             </ul>
             <ClinicalNote className="mt-8 max-w-md" />
@@ -229,7 +275,7 @@ function LiveDemo() {
                   <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-brand"><Upload className="h-6 w-6" /></div>
                   <div>
                     <p className="text-base font-semibold">Drop an intraoral photo, or click to browse</p>
-                    <p className="mt-1 text-sm text-muted">JPEG, PNG or WebP up to 15 MB. On mobile you can use the camera.</p>
+                    <p className="mt-1 text-sm text-muted">JPEG, PNG, WebP or HEIC up to 15 MB. On mobile you can use the camera.</p>
                   </div>
                   <span className={cn("mt-2", "inline-flex h-10 items-center gap-2 rounded-xl bg-ink px-4 text-sm font-medium text-bg")}>
                     <ImageUp className="h-4 w-4" /> Choose image
@@ -248,16 +294,8 @@ function LiveDemo() {
                     </div>
                   </div>
                   <div className="flex flex-col justify-center gap-4 p-2">
-                    <p className="eyebrow text-brand">{state.progress && !state.progress.cached && state.progress.loaded < state.progress.total ? "Downloading model (one time)" : "Analysing on your device"}</p>
-                    {state.progress && !state.progress.cached && state.progress.loaded < state.progress.total && (
-                      <div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-                          <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${(state.progress.loaded / state.progress.total) * 100}%` }} />
-                        </div>
-                        <p className="mt-1.5 text-xs tabular-nums text-muted">{(state.progress.loaded / 1048576).toFixed(0)} / {(state.progress.total / 1048576).toFixed(0)} MB</p>
-                      </div>
-                    )}
-                    {["Checking image quality", "Running OralNet-B4 (original + mirrored view)", "Computing Grad-CAM and region outline"].map((t, i) => (
+                    <p className="eyebrow text-brand">Analysing</p>
+                    {["Checking image quality", "Running OralNet-B4 with test-time augmentation", "Computing Grad-CAM and region outline"].map((t, i) => (
                       <motion.div key={t} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.6 }} className="flex items-center gap-3 text-sm">
                         <span className="relative flex h-2.5 w-2.5">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand/50" />
@@ -282,7 +320,7 @@ function LiveDemo() {
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button variant="ink" onClick={reset}><RefreshCw className="h-4 w-4" /> Try another image</Button>
-                    <ButtonLink to="/screen" variant="secondary">Open screening tool</ButtonLink>
+                    <ButtonLink to="/register" variant="secondary">Create free account</ButtonLink>
                   </div>
                 </motion.div>
               )}
@@ -338,7 +376,7 @@ function DemoResultView({ result, overlay, setOverlay, onReset }: {
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" onClick={onReset}><RefreshCw className="h-3.5 w-3.5" /> Analyse another</Button>
-          <ButtonLink to="/screen" size="sm" variant="ink">Screen several photos with a printable report <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
+          <ButtonLink to="/register" size="sm" variant="ink">Get LIME, reports and timelines <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
         </div>
       </div>
     </motion.div>
@@ -608,7 +646,7 @@ const FAQS = [
   { q: "How accurate is it?", a: <>On an internal evaluation of 400 specialist-labelled images, OralNet-B4 reached an AUC of 0.83, sensitivity of 70.5% and specificity of 80.2% at the 0.30 threshold, and 90% positive predictive value in the high-risk tier. That set may overlap training data, and independent external validation is pending. Full details are on the <Link to="/models" className="text-brand underline">models page</Link>.</> },
   { q: "What do the risk tiers mean?", a: "The model outputs a probability that the image is suspicious. Below 0.30 is Low, 0.30 to 0.55 is Moderate, and 0.55 or above is High. Each tier comes with a recommendation, and suspicious findings are always paired with a referral suggestion." },
   { q: "What images work best?", a: "Well-lit, in-focus intraoral photos where the area of concern fills a good part of the frame. Each image is quality-checked for sharpness, exposure and resolution. Fingers, retractors and background can draw the model's attention, which is why we show heatmaps and offer a crop tool." },
-  { q: "Do you train on my images?", a: "Not without your explicit opt-in. The free screening tool runs entirely in your browser, so photos are never uploaded at all. Customer data is isolated per tenant and accessed through signed, expiring URLs." },
+  { q: "Do you train on my images?", a: "Not without your explicit opt-in. Images from the public demo are deleted after one hour and are never used for training. Customer data is isolated per tenant and accessed through signed, expiring URLs." },
   { q: "Can it run without an internet connection?", a: <>Yes. The on-premise edition runs in Docker on a clinic server or workstation, CPU only, fully air-gapped. A Windows desktop app is on the <Link to="/roadmap#desktop" className="text-brand underline">roadmap</Link>.</> },
   { q: "Will it work for my patient population?", a: "Performance can shift with population, camera and lighting. We recommend local validation before clinical use, and our Enterprise plan includes a custom validation study on your own labelled data." },
 ];

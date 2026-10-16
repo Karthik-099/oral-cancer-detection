@@ -1,0 +1,25 @@
+# HTTPS reverse proxy for the OralAID API. Caddy gets and renews a Let's
+# Encrypt certificate for API_DOMAIN automatically.
+#
+# No domain yet? Use the free sslip.io wildcard DNS with your VM's public IP:
+#   API_DOMAIN=api.203.0.113.10.sslip.io
+{
+	email {$ACME_EMAIL}
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 100MB
+	}
+	reverse_proxy oralaid:8000 {
+		header_up X-Forwarded-For {remote_host}
+	}
+	header {
+		-Server
+	}
+	log {
+		output stdout
+		format console
+	}
+}

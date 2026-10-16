@@ -8,16 +8,14 @@
     "build": "tsc --noEmit && vite build && node scripts/postbuild.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "preview": "vite preview",
-    "prebuild": "node scripts/prepare-model.mjs",
-    "predev": "node scripts/prepare-model.mjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "framer-motion": "^11.5.4",
+    "lenis": "1.1.13",
     "lucide-react": "^0.441.0",
-    "onnxruntime-web": "1.19.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",

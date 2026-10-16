@@ -11,8 +11,8 @@ import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 
+import jwt
 from fastapi import HTTPException, Request
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -72,8 +72,9 @@ def create_token(user_id: int, token_version: int = 0) -> str:
 
 def decode_token(token: str) -> dict:
     try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], issuer=ISSUER)
-    except JWTError:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], issuer=ISSUER,
+                          options={"require": ["exp", "iat", "sub", "iss"]})
+    except jwt.PyJWTError:
         raise HTTPException(401, "Session expired. Please sign in again.")
 
 

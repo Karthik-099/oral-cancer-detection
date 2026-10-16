@@ -42,4 +42,9 @@ describe("api client", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
     await expect(api.health()).rejects.toMatchObject({ status: 0 });
   });
+
+  it("treats an HTML fallback page as service unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<!doctype html><div id=root></div>", { status: 200, headers: { "content-type": "text/html" } })));
+    await expect(api.models()).rejects.toMatchObject({ status: 503 });
+  });
 });

@@ -1,6 +1,10 @@
-# OralAID server: API + web app in one container, Postgres private to Docker.
+# OralAID server stack (Oracle VM or any Docker host):
+#   caddy    HTTPS on :80/:443 -> oralaid:8000   (the only public entry point)
+#   oralaid  FastAPI + OralNet-B4                (not published to the internet)
+#   db       Postgres 16, internal network only
+#   backup   nightly pg_dump, 7 days kept
 #
-#   cp deploy/.env.example deploy/.env      # fill in the secrets
+#   cp deploy/.env.example deploy/.env      # fill in the values
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 #
 # Postgres is on an internal-only Docker network: it publishes no ports, so
@@ -19,14 +23,17 @@ services:
     build: { context: .., dockerfile: deploy/Dockerfile }
     image: oralaid:latest
     restart: unless-stopped
-    ports: ["${ORALAID_PORT:-8000}:8000"]
+    # Bound to localhost only, for debugging on the VM (curl localhost:8000/api/health).
+    ports: ["127.0.0.1:${ORALAID_PORT:-8000}:8000"]
     environment:
       ORALAID_SECRET_KEY: ${ORALAID_SECRET_KEY:?set ORALAID_SECRET_KEY}
-      ORALAID_CORS_ORIGINS: ${ORALAID_CORS_ORIGINS:-http://localhost:8000}
+      ORALAID_CORS_ORIGINS: ${ORALAID_CORS_ORIGINS:-https://oral-cancer-detect.netlify.app}
+      ORALAID_SERVE_FRONTEND: ${ORALAID_SERVE_FRONTEND:-0}
       ORALAID_ADMIN_EMAIL: ${ORALAID_ADMIN_EMAIL:-}
       ORALAID_ADMIN_PASSWORD: ${ORALAID_ADMIN_PASSWORD:-}
       ORALAID_CLASSIFIER_URL: ${ORALAID_CLASSIFIER_URL:-}
       ORALAID_CLASSIFIER_SHA256: ${ORALAID_CLASSIFIER_SHA256:-}
+      HF_TOKEN: ${HF_TOKEN:-}
       ORALAID_TORCH_THREADS: ${ORALAID_TORCH_THREADS:-2}
       DATABASE_URL: postgresql://oralaid:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/oralaid
     volumes:
@@ -40,6 +47,22 @@ services:
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
     mem_limit: 3g
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN, e.g. api.<vm-ip>.sslip.io}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL for Let's Encrypt}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [public]
+    depends_on: [oralaid]
+    mem_limit: 256m
     logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
 
   db:
@@ -95,6 +118,8 @@ networks:
     internal: true               # no route to the outside world
 
 volumes:
+  caddy-data:
+  caddy-config:
   oralaid-data:
   oralaid-db:
   oralaid-backups:

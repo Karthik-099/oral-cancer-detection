@@ -1,97 +1,101 @@
 # Deploying OralAID
 
-OralAID has two parts:
-
-| Part | What it is | Where it runs |
+| Part | Where | How it updates |
 |---|---|---|
-| Web app | React SPA in `frontend/` | Netlify (global CDN) |
-| API + model | FastAPI + PyTorch in `oralaid_app/`, Postgres | Any Docker host: a VPS, Render, Railway, Fly, or your own server |
-
-Netlify only serves static files, so the API needs a Docker host. Netlify proxies `/api/*` and `/files/*` to it, so the browser only ever talks to your domain.
+| Website (`frontend/`) | Netlify: https://oral-cancer-detect.netlify.app | Netlify builds the `prod` branch on every push |
+| API + model + Postgres | Oracle Cloud VM, Docker Compose | GitHub Actions `deploy.yml` SSHes in on every push to `prod` |
 
 ```
-browser ──> your-domain (Netlify CDN) ──/api, /files──> API container ──> Postgres (internal Docker network)
-                    └── static assets, cached at the edge
+browser -> Netlify (static site, CDN) --/api, /files--> Caddy :443 on the VM -> FastAPI -> Postgres
 ```
 
-## 1. API server (Docker + Postgres)
+## 1. Create the Oracle VM (once)
 
-On the server (2 vCPU / 4 GB RAM is enough for a clinic):
+1. In Oracle Cloud, go to **Compute → Instances → Create**.
+   - Image: **Ubuntu 22.04 or 24.04**.
+   - Shape: **Ampere A1 (ARM), 4 OCPU / 24 GB** (Always Free eligible) or any x86 shape with at least 4 GB RAM.
+   - Add your SSH public key. Note the **public IP**.
+2. Under **Networking → VCN → Security List → Add Ingress Rules**, add TCP **80** and **443** from `0.0.0.0/0`.
+3. SSH in and run the setup script:
+   ```bash
+   ssh ubuntu@<VM_IP>
+   curl -fsSL https://raw.githubusercontent.com/Karthik-099/oral-cancer-detection/prod/deploy/oracle/setup.sh | bash
+   ```
+   It installs Docker, opens ports 80/443 in the OS firewall, clones the repo and creates
+   `deploy/.env` with strong generated secrets and `API_DOMAIN=api.<VM_IP>.sslip.io`.
+4. Edit `~/oral-cancer-detection/deploy/.env` and fill in the blanks: at minimum `ACME_EMAIL`, and optionally the admin account.
+5. Copy the model from your laptop. It is never stored in git:
+   ```bash
+   scp models/final_efficientnet_b4_oral_cancer.pth ubuntu@<VM_IP>:~/oral-cancer-detection/models/
+   ```
+6. Start it:
+   ```bash
+   bash ~/oral-cancer-detection/deploy/oracle/deploy.sh
+   curl https://api.<VM_IP>.sslip.io/api/health      # {"status":"ok",...,"model_ready":true}
+   ```
+   The first build takes 10–15 minutes on ARM. Caddy gets the HTTPS certificate automatically.
+
+### What runs on the VM
+
+| Service | Exposed | Notes |
+|---|---|---|
+| `caddy` | 80, 443 | Only public entry point; automatic Let's Encrypt HTTPS |
+| `oralaid` | 127.0.0.1:8000 only | FastAPI + model, read-only filesystem, all capabilities dropped |
+| `db` | none (internal network) | Postgres 16, 512 MB RAM cap, metadata only (~1–2 KB per case) |
+| `backup` | none | Nightly `pg_dump`, 7 days kept in a Docker volume |
+
+## 2. Connect the website (Netlify)
+
+In **Site configuration → Environment variables**, set:
+
+| Key | Value |
+|---|---|
+| `ORALAID_API_ORIGIN` | `https://api.<VM_IP>.sslip.io` (or your own API domain) |
+| `SITE_URL` | `https://oral-cancer-detect.netlify.app` |
+
+Then **Deploys → Trigger deploy**. Netlify now proxies `/api` and `/files` to the VM, and sign-in, analysis and the live demo all work.
+
+## 3. Automatic deploys (GitHub Actions)
+
+In **GitHub → Settings → Secrets and variables → Actions → New repository secret**, add:
+
+| Secret | Value |
+|---|---|
+| `ORACLE_HOST` | the VM's public IP |
+| `ORACLE_USER` | `ubuntu` |
+| `ORACLE_SSH_KEY` | the full private key text you use to SSH into the VM |
+| `PRODUCTION_API` | `https://api.<VM_IP>.sslip.io` (optional health check) |
+
+From then on, every push to `prod` runs CI and the security scans, then calls
+`deploy/oracle/deploy.sh` on the VM. Until `ORACLE_HOST` is set, the deploy step is skipped and the run stays green.
+
+## Useful commands on the VM
 
 ```bash
-git clone <repo> && cd oral-cancer-detection
-mkdir -p models && cp /path/to/final_efficientnet_b4_oral_cancer.pth models/   # never committed
-cp deploy/.env.example deploy/.env
-# Fill in deploy/.env. Generate secrets with:
-python3 -c "import secrets; print(secrets.token_urlsafe(48))"
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
-curl localhost:8000/api/health
+cd ~/oral-cancer-detection
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs -f oralaid
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec db psql -U oralaid   # database shell
 ```
 
-- Postgres has **no published ports**. It sits on an `internal: true` Docker network that only the API container can reach.
-- It's tuned small (512 MB RAM cap). It stores case metadata only, about 1–2 KB per case, so 100k cases stay well under 1 GB.
-- Images live in the `oralaid-data` volume. A nightly `pg_dump` runs into the `oralaid-backups` volume and keeps 7 days.
-- Put HTTPS in front with Caddy, nginx or your provider's load balancer, e.g. `api.yourdomain.com -> :8000`.
-
-Instead of copying the weights, you can set `ORALAID_CLASSIFIER_URL` (an HTTPS signed URL) and `ORALAID_CLASSIFIER_SHA256`. The download is refused if the checksum doesn't match.
-
-**Render alternative:** `render.yaml` is a blueprint (API + managed Postgres) that deploys from the `prod` branch.
-
-## 2. Web app on Netlify
-
-1. In Netlify, choose "Add new site", then "Import from Git" and pick this repo. `netlify.toml` sets everything: base `frontend`, build `npm ci && npm run build`, publish `dist`.
-2. Under Site settings, set the production branch to **`prod`**.
-3. Add these environment variables:
-   - `ORALAID_API_ORIGIN` = `https://api.yourdomain.com`
-   - `SITE_URL` = `https://yourdomain.com`
-4. Under Domain management, add your domain. Netlify provisions HTTPS automatically.
-5. On the API server, set `ORALAID_CORS_ORIGINS=https://yourdomain.com` in `deploy/.env`.
-
-Every pull request gets a deploy preview. Pushes to `prod` go live.
-
-### What Netlify serves
-
-- `/assets/*` is cached for one year (`immutable`, hashed file names). `index.html` always revalidates.
-- `/api/*` and `/files/*` are proxied and never cached. Clinical images are served through short-lived signed URLs.
-- Security headers: HSTS, a strict CSP, `X-Frame-Options: DENY`, and a Permissions-Policy that allows only the camera, for capture.
-- SEO: per-route titles and descriptions, canonical URLs, Open Graph tags, JSON-LD, `robots.txt` (blocks `/app`, `/api`, `/files`), and a `sitemap.xml` generated at build time. After launch, submit `https://yourdomain.com/sitemap.xml` in Google Search Console.
-
-## 3. CI/CD (GitHub Actions)
-
-| Workflow | Trigger | What it does |
-|---|---|---|
-| `ci.yml` | every push / PR | ruff lint, pytest (API, security, isolation tests), TypeScript, vitest, production build + bundle budget, Docker build, container smoke test, k6 smoke with SLO thresholds |
-| `security.yml` | push / PR / weekly | gitleaks secret scan, bandit SAST, pip-audit, npm audit, CodeQL (Python + TS), Trivy image scan, OWASP ZAP API scan (DAST) |
-| `deploy.yml` | push to `prod` | runs CI + security, then deploys the API (Render hook) and the web app (Netlify CLI), then post-deploy health, header and SEO checks plus a k6 smoke run |
-| `load-test.yml` | manual | k6 (smoke / load / stress / spike) and Locust mixed browse + analyse against a staging URL you choose |
-
-Secrets for `deploy.yml`: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`, optionally `RENDER_DEPLOY_HOOK_URL` and `PRODUCTION_URL`. Variables: `ORALAID_API_ORIGIN`, `SITE_URL`. If you use Netlify's Git integration instead, you can delete the `web` job.
-
-## 4. Load testing locally
-
-```bash
-cd oralaid_app && ORALAID_RATE_LIMIT_SCALE=1000 uvicorn app_fastapi:app --port 8000 &
-k6 run -e BASE_URL=http://localhost:8000 -e PROFILE=load loadtests/k6.js
-locust -f loadtests/locustfile.py --host http://localhost:8000
-./loadtests/ab.sh http://localhost:8000 2000 50
-```
-
-`ORALAID_RATE_LIMIT_SCALE` raises the per-IP limits so one load-generator IP isn't throttled. Use it only on staging.
-
-## 5. Environment variables (API)
+## API environment variables
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `ORALAID_SECRET_KEY` | yes | signs sessions and image URLs |
-| `ORALAID_CORS_ORIGINS` | yes in production | comma-separated site origins |
-| `DATABASE_URL` | no | Postgres URL. Defaults to SQLite in `ORALAID_DATA_DIR` |
-| `ORALAID_MODEL_DIR` | no | folder with `.pth` weights |
-| `ORALAID_CLASSIFIER_URL` / `_SHA256` | no | download weights on start, checksum-verified |
-| `ORALAID_THRESHOLD` / `ORALAID_HIGH_THRESHOLD` | no | risk tier cut-offs (default 0.30 / 0.55) |
-| `ORALAID_ADMIN_EMAIL` / `_PASSWORD` | no | bootstrap an admin account |
-| `ORALAID_PUBLIC_DOCS` | no | `1` exposes `/docs` and the OpenAPI schema in production |
-| `ORALAID_SERVE_FRONTEND` | no | `0` disables serving the SPA from the API (use when Netlify hosts it) |
+| `ORALAID_SECRET_KEY` | yes | signs sessions and image URLs (generated by `setup.sh`) |
+| `POSTGRES_PASSWORD` | yes | database password (generated by `setup.sh`) |
+| `API_DOMAIN`, `ACME_EMAIL` | yes | HTTPS name and Let's Encrypt contact |
+| `ORALAID_CORS_ORIGINS` | yes | the website origin |
+| `ORALAID_CLASSIFIER_URL` / `_SHA256` | no | download weights instead of copying them; checksum-verified |
+| `ORALAID_THRESHOLD` / `ORALAID_HIGH_THRESHOLD` | no | risk-tier cut-offs (default 0.30 / 0.55) |
+| `ORALAID_ADMIN_EMAIL` / `_PASSWORD` | no | create an admin account on first start |
+| `ORALAID_PUBLIC_DOCS` | no | `1` exposes `/docs` in production |
 
-## 6. Models
+## Load testing
 
-`python -m inference.evaluate --patients 400` (from `oralaid_app/`) re-runs the evaluation. Update `inference/registry.py` with the new numbers after retraining. Weights, patient images and CSVs are gitignored and must never be committed.
+```bash
+k6 run -e BASE_URL=https://api.<VM_IP>.sslip.io -e PROFILE=load loadtests/k6.js
+locust -f loadtests/locustfile.py --host https://api.<VM_IP>.sslip.io
+```
+
+You can also trigger **Actions → Load test** on GitHub. Avoid stress tests against production while it's in use.

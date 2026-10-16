@@ -1,11 +1,11 @@
 name: Load test
 
-# Run on demand against staging. Never point stress/spike profiles at production
-# without warning users first.
+# Run by hand against staging or the Oracle VM. Don't point stress/spike at
+# production without warning users first.
 on:
   workflow_dispatch:
     inputs:
-      base_url: { description: "Target base URL (staging)", required: true }
+      base_url: { description: "Target base URL", required: true }
       profile:
         description: "k6 profile"
         type: choice
@@ -19,28 +19,29 @@ permissions:
 
 jobs:
   k6:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: grafana/run-k6-action@v1
-        env: { BASE_URL: "${{ inputs.base_url }}", PROFILE: "${{ inputs.profile }}" }
-        with: { path: loadtests/k6.js }
+      - uses: actions/checkout@v5
+      - name: k6
+        run: |
+          docker run --rm -v "$PWD/loadtests:/scripts:ro" -e BASE_URL="${{ inputs.base_url }}" \
+            -e PROFILE="${{ inputs.profile }}" grafana/k6:0.55.0 run /scripts/k6.js
 
   locust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - run: pip install locust==2.32.4 numpy pillow
-      - name: Locust (mixed browse + analyze)
+      - name: Locust (mixed browse + analyse)
         run: |
           mkdir -p results
           locust -f loadtests/locustfile.py --host "${{ inputs.base_url }}" --headless \
             -u "${{ inputs.locust_users }}" -r 5 -t "${{ inputs.locust_duration }}" \
             --csv results/locust --html results/locust.html
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with: { name: locust-report, path: results/ }

@@ -157,7 +157,7 @@ export function fileUrl(path?: string | null) {
   return path.startsWith("http") ? path : `${API_BASE}${path}`;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, { raw, ...init }: RequestInit & { raw?: boolean } = {}): Promise<T> {
   const headers = new Headers(init.headers);
   const token = tokenStore.get();
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -179,8 +179,13 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch { /* not JSON */ }
     throw new ApiError(res.status, message);
   }
-  if (res.headers.get("content-type")?.includes("application/json")) return res.json() as Promise<T>;
-  return (await res.blob()) as unknown as T;
+  if (raw) return (await res.blob()) as unknown as T;
+  // Without a backend, static hosts answer /api/* with the SPA's index.html.
+  // Treat anything that isn't JSON as "service unavailable", never as data.
+  if (!res.headers.get("content-type")?.includes("application/json")) {
+    throw new ApiError(503, "The OralAID service is unavailable right now. Please try again shortly.");
+  }
+  return res.json() as Promise<T>;
 }
 
 const json = (body: unknown) => JSON.stringify(body);
@@ -224,7 +229,7 @@ export const api = {
   feedback: (id: string, body: Feedback) =>
     request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/feedback`, { method: "PUT", body: json(body) }),
   deleteCase: (id: string) => request<{ ok: boolean }>(`/api/cases/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  exportCsv: (filters: CaseFilters = {}) => request<Blob>(`/api/cases/export.csv?${toQuery(filters)}`),
+  exportCsv: (filters: CaseFilters = {}) => request<Blob>(`/api/cases/export.csv?${toQuery(filters)}`, { raw: true }),
 
   patients: (q?: string) => request<{ patients: PatientRow[] }>(`/api/patients${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   timeline: (id: number) =>

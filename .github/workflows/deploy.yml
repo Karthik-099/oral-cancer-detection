@@ -1,12 +1,15 @@
 name: Deploy
 
-# Production deploys run only from the "prod" branch, after CI and security pass.
-# Required repository secrets:
-#   NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID   web app (Netlify)
-#   HF_TOKEN                              backend on a Hugging Face Space (write token)
-#   RENDER_DEPLOY_HOOK_URL                backend on Render (optional alternative)
-#   PRODUCTION_URL                        e.g. https://oralaid.ai (post-deploy checks)
-# Repository variables: ORALAID_API_ORIGIN, SITE_URL, HF_SPACE (e.g. karthik-099/oralaid-api)
+# Runs on every push to "prod": CI + security must pass, then the API is
+# deployed to the Oracle VM over SSH. The website deploys on Netlify by itself
+# (Netlify's GitHub integration builds the prod branch).
+#
+# Repository secrets (Settings -> Secrets and variables -> Actions):
+#   ORACLE_HOST       public IP or hostname of the VM
+#   ORACLE_USER       SSH user, usually "ubuntu"
+#   ORACLE_SSH_KEY    private key (the full PEM text) that can log in to the VM
+#   PRODUCTION_API    optional, e.g. https://api.<vm-ip>.sslip.io (post-deploy check)
+# Until ORACLE_HOST is set the deploy step is skipped and the run stays green.
 
 on:
   push:
@@ -27,84 +30,29 @@ jobs:
     uses: ./.github/workflows/security.yml
     permissions: { contents: read, security-events: write, actions: read }
 
-  backend:
-    name: Deploy API
+  api:
+    name: Deploy API to Oracle VM
     needs: [ci, security]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
+    env:
+      HOST: ${{ secrets.ORACLE_HOST }}
+      USER: ${{ secrets.ORACLE_USER }}
+      KEY: ${{ secrets.ORACLE_SSH_KEY }}
+      API: ${{ secrets.PRODUCTION_API }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Sync API to Hugging Face Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_SPACE: ${{ vars.HF_SPACE }}
+      - name: Deploy over SSH
+        if: env.HOST != ''
         run: |
-          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then echo "HF_TOKEN / HF_SPACE not set; skipping."; exit 0; fi
-          # Only the API source goes to the Space: no data, images or weights.
-          mkdir -p space/models
-          cp deploy/huggingface/Dockerfile deploy/huggingface/README.md space/
-          cp oralaid_app/requirements-api.txt oralaid_app/app_fastapi.py oralaid_app/security.py space/
-          cp -r oralaid_app/inference space/inference
-          cp oralaid_app/models/validator.py space/models/
-          find space -name "__pycache__" -prune -exec rm -rf {} +
-          cd space
-          git init -q -b main
-          git -c user.name="oralaid-deploy" -c user.email="deploy@users.noreply.github.com" add -A
-          git -c user.name="oralaid-deploy" -c user.email="deploy@users.noreply.github.com" commit -qm "Deploy ${GITHUB_SHA::7}"
-          git push -f "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" main
-      - name: Trigger Render deploy
-        env: { HOOK: "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_deploy "${USER:-ubuntu}@$HOST" 'bash ~/oral-cancer-detection/deploy/oracle/deploy.sh'
+      - name: Post-deploy health check
+        if: env.API != ''
         run: |
-          if [ -z "$HOOK" ]; then echo "No deploy hook configured; skipping (Render auto-deploy may handle it)."; exit 0; fi
-          curl -fsS -X POST "$HOOK"
-
-  web:
-    name: Deploy web app to Netlify
-    needs: [ci, security]
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ steps.deploy.outputs.url }}
-    defaults: { run: { working-directory: frontend } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - run: npm ci --no-audit --no-fund
-      - run: npm run build
-        env:
-          ORALAID_API_ORIGIN: ${{ vars.ORALAID_API_ORIGIN }}
-          SITE_URL: ${{ vars.SITE_URL }}
-          ORALAID_ONNX_URL: ${{ vars.ORALAID_ONNX_URL }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      - id: deploy
-        name: Netlify deploy
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: |
-          npx --yes netlify-cli@17 deploy --dir=dist --prod --no-build \
-            --message "prod ${GITHUB_SHA::7}" --json > deploy.json
-          echo "url=$(node -p "require('./deploy.json').url")" >> "$GITHUB_OUTPUT"
-
-  verify:
-    name: Post-deploy checks
-    needs: [backend, web]
-    runs-on: ubuntu-latest
-    env: { URL: "${{ secrets.PRODUCTION_URL }}" }
-    steps:
-      - uses: actions/checkout@v4
-      - name: Health, headers and SEO files
-        run: |
-          [ -z "$URL" ] && { echo "PRODUCTION_URL not set; skipping"; exit 0; }
-          set -e
-          for i in $(seq 1 20); do curl -fsS "$URL/api/health" && break; sleep 15; done
-          curl -fsS "$URL/robots.txt" | grep -q Sitemap
-          curl -fsS "$URL/sitemap.xml" | grep -q "<urlset"
-          curl -sI "$URL/" | grep -qi "strict-transport-security"
-          curl -sI "$URL/" | grep -qi "content-security-policy"
-      - name: k6 smoke against production
-        if: env.URL != ''
-        uses: grafana/run-k6-action@v1
-        env: { BASE_URL: "${{ env.URL }}", PROFILE: smoke }
-        with: { path: loadtests/k6.js }
+          for i in $(seq 1 30); do curl -fsS "$API/api/health" && exit 0; sleep 10; done
+          exit 1
+      - name: Skipped
+        if: env.HOST == ''
+        run: echo "ORACLE_HOST not set yet; skipping deploy."

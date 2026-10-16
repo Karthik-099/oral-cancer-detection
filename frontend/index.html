@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>OralAID | Explainable AI for oral cancer screening</title>
     <meta name="description" content="OralAID helps dentists and clinicians flag suspicious oral lesions from an intraoral photo in seconds, with Grad-CAM and LIME explanations, case tracking and private deployment options." />
-    <meta name="theme-color" content="#FAFAF7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#090B0F" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#05070D" />
     <link rel="canonical" href="https://oral-cancer-detect.netlify.app/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
@@ -22,7 +21,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
     <script type="application/ld+json">
       {
@@ -40,7 +39,7 @@
       // Apply the saved theme before first paint to avoid a flash.
       try {
         var t = localStorage.getItem("oralaid-theme");
-        if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) document.documentElement.classList.add("dark");
+        if (t !== "light") document.documentElement.classList.add("dark");
       } catch (e) {}
     </script>
   </head>

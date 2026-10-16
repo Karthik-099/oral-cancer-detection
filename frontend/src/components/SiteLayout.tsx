@@ -1,18 +1,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Menu, Moon, Sun, X } from "lucide-react";
+import { ArrowRight, Github, Menu, Moon, Sun, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useBackend } from "@/lib/backend";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 import { ButtonLink } from "./ui";
 import { toast } from "./Toast";
+import { Aurora, ScrollProgress, useSmoothScroll } from "./Atmosphere";
 
 const NAV = [
-  { to: "/screen", label: "Screen free" },
   { to: "/platform", label: "Platform" },
   { to: "/models", label: "Models" },
   { to: "/deployment", label: "Deployment" },
@@ -35,7 +34,6 @@ function Header() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const user = useAuth((s) => s.user);
-  const backend = useBackend();
   const { pathname } = useLocation();
 
   useEffect(() => setOpen(false), [pathname]);
@@ -60,9 +58,7 @@ function Header() {
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <ThemeButton className="hidden sm:grid" />
-          {backend !== "online" ? (
-            <ButtonLink to="/screen" size="sm" variant="ink" className="hidden sm:inline-flex">Start screening <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
-          ) : user ? (
+          {user ? (
             <ButtonLink to="/app" size="sm" variant="ink">Open app <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
           ) : (
             <>
@@ -82,14 +78,8 @@ function Header() {
             <div className="container flex flex-col py-3">
               {NAV.map((n) => <Link key={n.to} to={n.to} className="rounded-lg px-2 py-3 text-[15px]">{n.label}</Link>)}
               <div className="mt-3 flex gap-2 border-t border-line pt-4">
-                {backend !== "online" ? (
-                  <ButtonLink to="/screen" variant="ink" className="flex-1">Start screening</ButtonLink>
-                ) : (
-                  <>
-                    <ButtonLink to={user ? "/app" : "/register"} variant="ink" className="flex-1">{user ? "Open app" : "Start free"}</ButtonLink>
-                    {!user && <ButtonLink to="/login" variant="secondary" className="flex-1">Sign in</ButtonLink>}
-                  </>
-                )}
+                <ButtonLink to={user ? "/app" : "/register"} variant="ink" className="flex-1">{user ? "Open app" : "Start free"}</ButtonLink>
+                {!user && <ButtonLink to="/login" variant="secondary" className="flex-1">Sign in</ButtonLink>}
                 <ThemeButton />
               </div>
             </div>
@@ -127,7 +117,7 @@ function Newsletter() {
 const FOOTER = [
   { title: "Product", links: [["Platform", "/platform"], ["Models", "/models"], ["Pricing", "/pricing"], ["Roadmap", "/roadmap"], ["Desktop app", "/roadmap#desktop"]] },
   { title: "Deploy", links: [["Cloud", "/deployment#cloud"], ["Private VPC", "/deployment#vpc"], ["On-premise", "/deployment#onprem"], ["Security", "/security"]] },
-  { title: "Developers", links: [["API docs", "/docs"], ["Quickstart", "/docs#quickstart"], ["Status", "/docs#status"]] },
+  { title: "Developers", links: [["API docs", "/docs"], ["Quickstart", "/docs#quickstart"], ["Status", "/docs#status"], ["Source code", "https://github.com/Karthik-099/oral-cancer-detection"]] },
   { title: "Company", links: [["About", "/about"], ["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"]] },
 ];
 
@@ -146,7 +136,11 @@ function Footer() {
               <p className="eyebrow mb-4">{col.title}</p>
               <ul className="space-y-2.5">
                 {col.links.map(([label, to]) => (
-                  <li key={to}><Link to={to} className="text-sm text-muted transition hover:text-ink">{label}</Link></li>
+                  <li key={to}>
+                    {to.startsWith("http")
+                      ? <a href={to} target="_blank" rel="noreferrer" className="text-sm text-muted transition hover:text-ink">{label}</a>
+                      : <Link to={to} className="text-sm text-muted transition hover:text-ink">{label}</Link>}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -156,7 +150,13 @@ function Footer() {
       <div className="border-t border-line">
         <div className="container flex flex-col gap-3 py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; {new Date().getFullYear()} OralAID. Clinical decision support only. Not a substitute for examination or biopsy.</p>
-          <p>Research use. Not cleared as a medical device in any jurisdiction.</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <a href="https://github.com/Karthik-099/oral-cancer-detection" target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1.5 transition hover:text-ink">
+              <Github className="h-3.5 w-3.5" />Open source (MIT) on GitHub
+            </a>
+            <span>Research use. Not cleared as a medical device.</span>
+          </div>
         </div>
       </div>
     </footer>
@@ -165,12 +165,15 @@ function Footer() {
 
 export default function SiteLayout() {
   const { pathname, hash } = useLocation();
+  useSmoothScroll();
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth" });
     else window.scrollTo(0, 0);
   }, [pathname, hash]);
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="relative flex min-h-screen flex-col">
+      <Aurora />
+      <ScrollProgress />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2">Skip to content</a>
       <Header />
       <main id="main" className="flex-1"><Outlet /></main>

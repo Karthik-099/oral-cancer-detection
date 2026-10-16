@@ -109,12 +109,9 @@ function BackendNotice() {
   const status = useBackend();
   if (status !== "offline") return null;
   return (
-    <div className="mt-6 rounded-xl border border-brand/25 bg-brand/5 p-4 text-sm">
-      <p className="font-medium">Accounts are coming soon.</p>
-      <p className="mt-1 text-muted">
-        You can already screen photos for free, privately on your own device, with no account.{" "}
-        <Link to="/screen" className="font-medium text-brand hover:underline">Open the screening tool</Link>
-      </p>
+    <div role="status" className="mt-6 rounded-xl border border-moderate/30 bg-moderate/5 p-4 text-sm">
+      <p className="font-medium">The OralAID server is offline right now.</p>
+      <p className="mt-1 text-muted">Signing in and creating accounts will work again as soon as it's back. Please try in a few minutes.</p>
     </div>
   );
 }

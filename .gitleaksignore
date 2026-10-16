@@ -1,0 +1,8 @@
+# Reviewed gitleaks findings in past commits (fingerprints, one per line).
+# - oralaid_app/.env: old Flask SECRET_KEY placeholder from before the rebuild. The file is no longer
+#   tracked and the current API never used this key. Treat that value as burned.
+# - Docs.tsx: example curl command in the API docs ("Authorization: Bearer <token>"), not a secret.
+aeba3da322a691a6c501def40c55afdf0c09f747:oralaid_app/.env:generic-api-key:2
+aeba3da322a691a6c501def40c55afdf0c09f747:frontend/src/pages/site/Docs.tsx:curl-auth-header:118
+fa050fe93e4f890c1359f0e36753bbd0aaba6ff0:frontend/src/pages/site/Docs.tsx:curl-auth-header:118
+3a89fbf1fb99d02897f557e9947528b4cc8bc5bd:oralaid_app/.env:generic-api-key:2

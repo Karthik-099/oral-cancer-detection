@@ -1,19 +1,20 @@
 # OralAID API runtime. CPU wheels for torch come from the PyTorch index:
 #   pip install -r requirements-api.txt --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.3.1
-torchvision==0.18.1
-numpy==1.26.4
-pillow==10.4.0
-opencv-python-headless==4.10.0.84
-scikit-image==0.24.0
-scikit-learn==1.5.2
+# Versions are pinned and audited in CI (pip-audit). Works on x86_64 and ARM64 (Oracle Ampere).
+torch==2.8.0
+torchvision==0.23.0
+numpy==2.2.6
+pillow==12.3.0
+opencv-python-headless==4.11.0.86
+scikit-image==0.25.2
+scikit-learn==1.7.2
 
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-python-multipart==0.0.20
-pydantic[email]==2.10.4
-SQLAlchemy==2.0.36
-psycopg2-binary==2.9.10
-python-jose[cryptography]==3.3.0
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+pydantic[email]==2.14.1
+SQLAlchemy==2.0.55
+psycopg2-binary==2.9.13
+PyJWT==2.15.1
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1

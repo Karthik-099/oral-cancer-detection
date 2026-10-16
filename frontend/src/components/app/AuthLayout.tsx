@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { ThemeButton } from "@/components/SiteLayout";
 
 /** Split auth screen: form on the left, calm branded panel on large screens. */
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle: ReactNode; children: ReactNode; footer?: ReactNode }) {
@@ -13,7 +12,6 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
       <div className="flex min-h-screen flex-col px-5 py-6 sm:px-10">
         <div className="flex items-center justify-between">
           <Link to="/" aria-label="OralAID home"><Logo /></Link>
-          <ThemeButton />
         </div>
         <div className="flex flex-1 items-center justify-center py-10">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.2, 0.7, 0.2, 1] }}

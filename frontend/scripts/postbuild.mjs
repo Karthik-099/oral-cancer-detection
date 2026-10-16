@@ -25,7 +25,7 @@ const routes = [
   ["/", "1.0", "weekly"], ["/platform", "0.9", "monthly"], ["/models", "0.9", "monthly"],
   ["/deployment", "0.8", "monthly"], ["/pricing", "0.8", "monthly"], ["/roadmap", "0.7", "weekly"],
   ["/docs", "0.7", "monthly"], ["/security", "0.6", "monthly"], ["/about", "0.5", "yearly"],
-  ["/contact", "0.5", "yearly"], ["/privacy", "0.2", "yearly"], ["/terms", "0.2", "yearly"],
+  ["/contact", "0.5", "yearly"], ["/support", "0.5", "monthly"], ["/case-study", "0.8", "monthly"], ["/privacy", "0.2", "yearly"], ["/terms", "0.2", "yearly"],
 ];
 const today = new Date().toISOString().slice(0, 10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

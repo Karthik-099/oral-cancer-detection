@@ -20,7 +20,7 @@ export function Modal({ open, onClose, title, children, className }: {
       {open && (
         <motion.div className="fixed inset-0 z-[90] flex items-end justify-center p-0 sm:items-center sm:p-6"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             role="dialog" aria-modal="true" aria-label={title}
             className={cn("relative max-h-[92vh] w-full overflow-auto rounded-t-3xl border border-line bg-surface p-6 shadow-lift sm:max-w-lg sm:rounded-3xl", className)}

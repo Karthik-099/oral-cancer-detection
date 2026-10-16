@@ -22,6 +22,8 @@ const Security = lazy(() => import("@/pages/site/Security"));
 const About = lazy(() => import("@/pages/site/About"));
 const Contact = lazy(() => import("@/pages/site/Contact"));
 const Legal = lazy(() => import("@/pages/site/Legal"));
+const Support = lazy(() => import("@/pages/site/Support"));
+const CaseStudy = lazy(() => import("@/pages/site/CaseStudy"));
 const NotFound = lazy(() => import("@/pages/site/NotFound"));
 
 const Login = lazy(() => import("@/pages/app/Login"));
@@ -54,6 +56,8 @@ export default function App() {
           <Route element={<SiteLayout />}>
             <Route index element={<Home />} />
             <Route path="platform" element={<Platform />} />
+            <Route path="support" element={<Support />} />
+            <Route path="case-study" element={<CaseStudy />} />
             <Route path="models" element={<Models />} />
             <Route path="deployment" element={<Deployment />} />
             <Route path="pricing" element={<Pricing />} />

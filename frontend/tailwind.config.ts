@@ -43,6 +43,7 @@ const config: Config = {
         },
         "spin-slow": { to: { transform: "rotate(360deg)" } },
         "gradient-x": { "0%,100%": { backgroundPosition: "0% 50%" }, "50%": { backgroundPosition: "100% 50%" } },
+        marquee: { to: { transform: "translateX(-50%)" } },
       },
       animation: {
         "fade-up": "fade-up .5s cubic-bezier(.2,.7,.2,1) both",
@@ -51,6 +52,7 @@ const config: Config = {
         drift: "drift 22s ease-in-out infinite",
         "spin-slow": "spin-slow 40s linear infinite",
         "gradient-x": "gradient-x 8s ease infinite",
+        marquee: "marquee 45s linear infinite",
       },
     },
   },

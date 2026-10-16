@@ -2,16 +2,19 @@ import { useCallback, useEffect, useRef, useState, type DragEvent, type ReactNod
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
-  AlertTriangle, ArrowRight, ArrowUpRight, Building2, Camera, Cloud, Command, Cpu, FileBarChart2, Fingerprint, GitBranch,
-  HardDrive, ImageUp, KeyRound, LineChart, Microscope, MonitorSmartphone, RefreshCw, ScanSearch, Server, ShieldCheck, Sparkles,
+  AlertTriangle, ArrowRight, ArrowUpRight, Building2, Camera, Cloud, Command, FileBarChart2, Fingerprint, GitBranch,
+  HardDrive, ImageUp, KeyRound, LineChart, Microscope, RefreshCw, ScanSearch, Server, ShieldCheck, Sparkles,
   Stethoscope, Timer, Trash2, Upload,
 } from "lucide-react";
+import { Coffee, Github, Star } from "lucide-react";
+import { REPO_URL } from "@/lib/links";
+import { BuiltWith, CaseStudy, FutureVision, Site3DShowcase } from "@/components/site/HomeSections";
 import { api, ApiError, fileUrl, type ImageResult } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useSeo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { Reveal, Tilt } from "@/components/Reveal";
-import { Badge, Button, ButtonLink, Kbd } from "@/components/ui";
+import { Badge, Button, ButtonLink, Kbd, buttonClass } from "@/components/ui";
 import { CompareSlider, ProbabilityMeter, QualityBar, RiskBadge } from "@/components/clinical";
 import { CTABand, ClinicalNote, FAQ, IconTile, Section, SectionHeading } from "@/components/site/marketing";
 import { AnalysisMockup, TissueTile, type TileVariant } from "@/components/site/ProductMockup";
@@ -520,40 +523,6 @@ function Features() {
   );
 }
 
-/* ---------------------------------------------------------- Why it matters */
-
-function WhyItMatters() {
-  const facts = [
-    { k: "Common", title: "Among the most common cancers in South Asia", body: "Oral cancer is a major public health burden across South Asia and many low- and middle-income regions, driven by tobacco, areca nut and alcohol use." },
-    { k: "Late", title: "Too often found late", body: "Many cases are diagnosed at an advanced stage, when early lesions went unnoticed or were not referred in time." },
-    { k: "Early", title: "Early detection changes outcomes", body: "Survival is substantially better when oral cancer is found early. Screening at routine dental visits is one of the most practical places to catch it." },
-  ];
-  return (
-    <Section className="relative overflow-hidden bg-ink text-bg">
-      <div aria-hidden className="pointer-events-none absolute -left-40 top-0 h-96 w-96 rounded-full bg-brand/30 blur-3xl" />
-      <div className="relative">
-        <Reveal className="max-w-2xl">
-          <p className="eyebrow mb-4 text-bg/60">Why it matters</p>
-          <h2 className="display text-4xl sm:text-6xl">The dental chair is the <em className="italic">front line.</em></h2>
-          <p className="mt-5 text-base text-bg/70 sm:text-lg">
-            Most people see a dentist far more often than an oncologist. Giving every chair a second pair of eyes, one that explains itself, can move detection earlier.
-          </p>
-        </Reveal>
-        <div className="mt-14 grid gap-px overflow-hidden rounded-3xl border border-bg/10 bg-bg/10 md:grid-cols-3">
-          {facts.map((f, i) => (
-            <Reveal key={f.k} delay={i * 0.08} className="bg-ink p-7 sm:p-8">
-              <p className="display text-5xl italic text-bg/90">{f.k}</p>
-              <h3 className="mt-6 text-base font-semibold">{f.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-bg/65">{f.body}</p>
-            </Reveal>
-          ))}
-        </div>
-        <p className="mt-6 text-xs text-bg/50">General public health context. OralAID does not claim to change outcomes; it is a screening aid that has not yet completed independent clinical validation.</p>
-      </div>
-    </Section>
-  );
-}
-
 /* --------------------------------------------------------- Deployment teaser */
 
 function DeploymentTeaser() {
@@ -581,37 +550,6 @@ function DeploymentTeaser() {
             </Link>
           </Reveal>
         ))}
-      </div>
-    </Section>
-  );
-}
-
-/* ------------------------------------------------------------ Coming soon */
-
-function ComingSoon() {
-  return (
-    <Section className="pt-0 sm:pt-0">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Reveal className="card relative overflow-hidden p-7 sm:p-10">
-          <div aria-hidden className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brand/10 blur-2xl" />
-          <Badge tone="brand">Coming soon</Badge>
-          <h3 className="display mt-5 text-3xl sm:text-4xl">OralAID Desktop for Windows</h3>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">Offline screening on the clinic PC you already have. Batch-import from folders and bridge from intraoral camera software.</p>
-          <div className="mt-8 flex items-center gap-4">
-            <div className="grid h-16 w-24 place-items-center rounded-lg border border-line bg-surface-2"><MonitorSmartphone className="h-6 w-6 text-brand" /></div>
-            <Link to="/roadmap#desktop" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline">Join the waitlist <ArrowRight className="h-4 w-4" /></Link>
-          </div>
-        </Reveal>
-        <Reveal delay={0.08} className="card relative overflow-hidden p-7 sm:p-10">
-          <div aria-hidden className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-accent/10 blur-2xl" />
-          <Badge tone="accent">Exploring partnerships</Badge>
-          <h3 className="display mt-5 text-3xl sm:text-4xl">Inside dental hardware</h3>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">The intraoral camera captures, our model predicts on the device, and results appear chairside in real time.</p>
-          <div className="mt-8 flex items-center gap-4">
-            <div className="grid h-16 w-24 place-items-center rounded-lg border border-line bg-surface-2"><Cpu className="h-6 w-6 text-accent" /></div>
-            <Link to="/roadmap#hardware" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline">Partner with us <ArrowRight className="h-4 w-4" /></Link>
-          </div>
-        </Reveal>
       </div>
     </Section>
   );
@@ -651,20 +589,56 @@ const FAQS = [
   { q: "Will it work for my patient population?", a: "Performance can shift with population, camera and lighting. We recommend local validation before clinical use, and our Enterprise plan includes a custom validation study on your own labelled data." },
 ];
 
+/* ------------------------------------------------------------ Open source */
+
+function OpenSource() {
+  return (
+    <Section id="open-source">
+      <Reveal>
+        <div className="card glow-border relative overflow-hidden p-8 sm:p-12">
+          <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgb(var(--glow-2)/.25),transparent_65%)] blur-2xl" />
+          <div className="relative grid items-center gap-10 lg:grid-cols-[auto_1fr_auto]">
+            <div className="grid h-24 w-24 place-items-center rounded-3xl border border-line bg-surface-2 shadow-[0_0_60px_rgb(var(--glow-1)/.2)]">
+              <Github className="h-12 w-12" />
+            </div>
+            <div>
+              <p className="eyebrow mb-2 text-brand">Open source, MIT licensed</p>
+              <h2 className="display text-3xl sm:text-5xl">Built in the open. <em>Support it.</em></h2>
+              <p className="mt-3 max-w-xl text-muted">
+                Every line of OralAID, from the model pipeline to this website, is public. Star the project, report issues,
+                contribute, or buy us a coffee to keep it free.
+              </p>
+              <a href={REPO_URL} target="_blank" rel="noreferrer" className="mt-4 inline-block break-all font-mono text-sm text-brand hover:underline">
+                github.com/Karthik-099/oral-cancer-detection
+              </a>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <a href={REPO_URL} target="_blank" rel="noreferrer" className={buttonClass("ink", "lg")}><Star className="h-4 w-4" />Star on GitHub</a>
+              <ButtonLink to="/support" size="lg"><Coffee className="h-4 w-4" />Buy us a coffee</ButtonLink>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+    </Section>
+  );
+}
+
 export default function Home() {
   useSeo("OralAID: explainable AI for oral cancer screening",
     "Upload intraoral photos and get a suspicion score, risk tier and heatmap of what the model saw. Clinical decision support for earlier referral.");
   return (
     <>
       <Hero />
+      <BuiltWith />
       <MetricsStrip />
       <HowItWorks />
       <LiveDemo />
       <Explainability />
+      <Site3DShowcase />
       <Features />
-      <WhyItMatters />
+      <CaseStudy />
       <DeploymentTeaser />
-      <ComingSoon />
+      <FutureVision />
       <Mission />
       <Section>
         <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
@@ -673,6 +647,7 @@ export default function Home() {
           <Reveal><FAQ items={FAQS} /></Reveal>
         </div>
       </Section>
+      <OpenSource />
       <CTABand />
     </>
   );

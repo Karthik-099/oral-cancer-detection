@@ -1,18 +1,17 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Activity, AlertTriangle, ArrowUpRight, Check, Copy, CreditCard, KeyRound, LogOut, Monitor, Moon, Palette, Plus, Shield, Sun, Trash2, UserRound,
+  Activity, AlertTriangle, ArrowUpRight, Check, Copy, CreditCard, KeyRound, LogOut, Plus, Shield, Trash2, UserRound,
 } from "lucide-react";
 import { API_BASE, api, type ApiKey } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useSeo } from "@/lib/seo";
-import { useTheme } from "@/lib/theme";
 import { cn, formatDate, timeAgo } from "@/lib/utils";
 import { PageHeader } from "@/components/AppShell";
 import { Badge, Button, Card, ErrorNote, Field, buttonClass } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { toast } from "@/components/Toast";
-import { ConfirmDialog, errorMessage, Segmented, SPECIALTIES } from "@/components/app/kit";
+import { ConfirmDialog, errorMessage, SPECIALTIES } from "@/components/app/kit";
 import { PasswordChecklist, passwordChecks } from "@/components/app/PasswordChecklist";
 
 const SECTIONS = [
@@ -21,7 +20,6 @@ const SECTIONS = [
   { id: "keys", label: "API keys", icon: KeyRound },
   { id: "activity", label: "Activity", icon: Activity },
   { id: "plan", label: "Plan", icon: CreditCard },
-  { id: "appearance", label: "Appearance", icon: Palette },
 ] as const;
 
 export default function Settings() {
@@ -74,7 +72,6 @@ export default function Settings() {
           <Keys />
           <ActivityLog />
           <Plan />
-          <Appearance />
         </div>
       </div>
     </div>
@@ -482,23 +479,6 @@ function Plan() {
           </div>
         </div>
         <Link to="/pricing" className={buttonClass("secondary")}>Compare plans<ArrowUpRight className="h-4 w-4" /></Link>
-      </div>
-    </Section>
-  );
-}
-
-const THEMES = [
-  { value: "light", label: "Light", icon: <Sun className="h-3.5 w-3.5" /> },
-  { value: "dark", label: "Dark", icon: <Moon className="h-3.5 w-3.5" /> },
-] as const;
-
-function Appearance() {
-  const { dark, toggle } = useTheme();
-  return (
-    <Section id="appearance" title="Appearance" desc="Choose how OralAID looks on this device.">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 text-sm text-muted"><Monitor className="h-4 w-4" />Theme</div>
-        <Segmented label="Theme" value={dark ? "dark" : "light"} onChange={(v) => { if ((v === "dark") !== dark) toggle(); }} options={THEMES} />
       </div>
     </Section>
   );

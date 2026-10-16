@@ -109,20 +109,19 @@ export function CTABand({ title, body, className }: { title?: ReactNode; body?: 
   const user = useAuth((s) => s.user);
   return (
     <section className={cn("container py-12 sm:py-20", className)}>
-      <Reveal className="relative overflow-hidden rounded-3xl bg-ink px-6 py-14 text-bg sm:px-14 sm:py-20">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand/40 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 left-10 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[.07] [background-image:linear-gradient(to_right,currentColor_1px,transparent_1px),linear-gradient(to_bottom,currentColor_1px,transparent_1px)] [background-size:48px_48px]" />
+      <Reveal className="glow-border relative overflow-hidden rounded-3xl border border-line bg-surface px-6 py-14 sm:px-14 sm:py-20">
+        <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[radial-gradient(circle,rgb(var(--glow-1)/.28),transparent_65%)] blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-40 left-0 h-96 w-96 rounded-full bg-[radial-gradient(circle,rgb(var(--glow-2)/.22),transparent_65%)] blur-2xl" />
         <div className="relative max-w-2xl">
-          <h2 className="display text-4xl sm:text-6xl">{title ?? <>Screen earlier. <em className="italic">Explain everything.</em></>}</h2>
-          <p className="mt-5 text-base text-bg/70 sm:text-lg">
+          <h2 className="display text-4xl sm:text-6xl">{title ?? <>Screen earlier. <em>Explain everything.</em></>}</h2>
+          <p className="mt-5 text-base text-muted sm:text-lg">
             {body ?? "Start with 50 free analyses a month. No credit card. Bring your own images and see what the model sees."}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink to={user ? "/app" : "/register"} size="lg" className="bg-bg text-ink shadow-none hover:bg-bg/90 dark:text-ink">
+            <ButtonLink to={user ? "/app" : "/register"} size="lg">
               {user ? "Open the app" : "Start free"} <ArrowRight className="h-4 w-4" />
             </ButtonLink>
-            <ButtonLink to="/contact" size="lg" variant="ghost" className="text-bg ring-1 ring-inset ring-bg/25 hover:bg-bg/10">Book a demo</ButtonLink>
+            <ButtonLink to="/contact" size="lg" variant="secondary">Book a demo</ButtonLink>
           </div>
         </div>
       </Reveal>

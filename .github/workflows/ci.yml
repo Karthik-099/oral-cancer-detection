@@ -53,7 +53,7 @@ jobs:
         run: |
           total=$(du -sk dist/assets | cut -f1)
           echo "assets: ${total} KB"
-          test "$total" -lt 2500 || { echo "::error::Bundle over 2.5 MB budget"; exit 1; }
+          test "$total" -lt 3000 || { echo "::error::Bundle over 3 MB budget"; exit 1; }
       - uses: actions/upload-artifact@v5
         with: { name: web-dist, path: frontend/dist, retention-days: 7 }
 

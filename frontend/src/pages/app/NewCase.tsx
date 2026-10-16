@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -15,6 +15,8 @@ import { ImageCropper } from "@/components/ImageCropper";
 import { toast } from "@/components/Toast";
 import { CameraCapture } from "@/components/app/CameraCapture";
 import { Chip, patientName, RISK_FACTORS, Segmented, Toggle } from "@/components/app/kit";
+
+const Mouth3D = lazy(() => import("@/components/three/Mouth3D"));
 
 const MAX_FILES = 6;
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -70,6 +72,7 @@ export default function NewCase() {
   const [camera, setCamera] = useState(false);
   const [cropping, setCropping] = useState<Item | null>(null);
   const [site, setSite] = useState<Site | null>(null);
+  const [picker, setPicker] = useState<"3d" | "2d">("3d");
   const [reference, setReference] = useState(params.get("ref") ?? "");
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
@@ -262,9 +265,21 @@ export default function NewCase() {
             )}
           </Section>
 
-          <Section n={2} title="Anatomical site" desc="Tap the region on the map or choose from the list." done={!!site}>
-            <div className="grid items-center gap-6 sm:grid-cols-[220px_1fr]">
-              <MouthMap value={site} onChange={setSite} className="mx-auto max-w-[220px]" />
+          <Section n={2} title="Anatomical site" desc="Click the region on the 3D model (drag to rotate), use the 2D map, or choose from the list." done={!!site}>
+            <div className="mb-4 flex justify-end">
+              <Segmented<"3d" | "2d"> size="sm" label="Site picker" value={picker} onChange={setPicker}
+                options={[{ value: "3d", label: "3D model" }, { value: "2d", label: "2D map" }]} />
+            </div>
+            <div className={picker === "3d" ? "grid gap-5" : "grid items-center gap-6 sm:grid-cols-[220px_1fr]"}>
+              {picker === "3d" ? (
+                <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-[radial-gradient(circle_at_50%_45%,rgb(var(--glow-3)/.16),transparent_65%)]">
+                  <Suspense fallback={<div className="grid h-full place-items-center"><Loader2 className="h-5 w-5 animate-spin text-muted" /></div>}>
+                    <Mouth3D value={site} onChange={setSite} className="h-full w-full" />
+                  </Suspense>
+                </div>
+              ) : (
+                <MouthMap value={site} onChange={setSite} className="mx-auto max-w-[220px]" />
+              )}
               <div className="flex flex-wrap gap-2">
                 {SITES.map((s) => <Chip key={s} active={site === s} onClick={() => setSite(site === s ? null : s)}>{s}</Chip>)}
               </div>
@@ -418,7 +433,6 @@ function AnalysingOverlay({ image, done, count, withLime }: { image?: string; do
       <motion.div initial={{ y: 12, scale: 0.98 }} animate={{ y: 0, scale: 1 }} className="w-full max-w-sm">
         <div className="relative mx-auto aspect-square w-full max-w-[280px] overflow-hidden rounded-3xl border border-line bg-surface-2 shadow-lift">
           {image && <img src={image} alt="" className="h-full w-full object-cover" />}
-          <div className="absolute inset-0 bg-[linear-gradient(rgb(var(--brand)/.12)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--brand)/.12)_1px,transparent_1px)] bg-[size:24px_24px]" />
           {!done && (
             <div className="absolute inset-0 animate-scan">
               <div className="h-1/3 bg-gradient-to-b from-transparent via-brand/25 to-brand/50" />

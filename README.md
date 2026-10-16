@@ -42,7 +42,7 @@ on every case, which feeds model evaluation and future retraining.
 
 | | |
 |---|---|
-| **Screening** | 1 to 6 photos per case, camera capture, crop-to-tissue tool, interactive mouth map for the anatomical site |
+| **Screening** | 1 to 6 photos per case, camera capture, crop-to-tissue tool, interactive 3D mouth model (and 2D map) for the anatomical site |
 | **AI result** | Suspicion probability with uncertainty, Low / Moderate / High tier, clinical recommendation |
 | **Explainability** | Grad-CAM heatmap, Grad-CAM-seeded GrabCut region outline, LIME superpixels on demand |
 | **Image quality gate** | Sharpness, exposure and resolution checks; non-oral photos are rejected |
@@ -98,7 +98,7 @@ flowchart LR
 |---|---|
 | **ML / inference** | PyTorch 2.8, torchvision (EfficientNet-B4), OpenCV (GrabCut, quality checks), scikit-image (SLIC superpixels), scikit-learn (LIME surrogate), NumPy |
 | **Backend** | Python 3.11, FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2, PostgreSQL 16 (SQLite for local dev), PyJWT, passlib/bcrypt |
-| **Frontend** | React 18, TypeScript (strict), Vite 5, Tailwind CSS 3, Framer Motion (scroll and 3D animation), Lenis (smooth scrolling), Recharts, Zustand, React Router 6, lucide icons |
+| **Frontend** | React 18, TypeScript (strict), Vite 5, Tailwind CSS 3, Three.js + React Three Fiber (interactive 3D mouth model), Framer Motion (scroll and 3D animation), Lenis (smooth scrolling), Recharts, Zustand, React Router 6, lucide and Simple Icons |
 | **Design** | Chakra Petch + Space Grotesk + JetBrains Mono, gradient design tokens, dark/light themes |
 | **Hosting** | Netlify (web, CDN, headers, proxy), Oracle Cloud VM (API) with Docker Compose and Caddy (Let's Encrypt HTTPS) |
 | **CI/CD** | GitHub Actions: lint, tests, build, Docker smoke test, k6 load smoke, deploy to the VM over SSH |
@@ -185,6 +185,10 @@ All endpoints are under `/api` and documented at `/docs` (OpenAPI) when enabled.
 | GET | `/dashboard` | Analytics |
 | GET/POST/DELETE | `/keys` | API keys (`X-API-Key` header) |
 | GET | `/models`, `/health` | Model cards, health |
+
+## Case study
+
+The site's [case study](https://oral-cancer-detect.netlify.app/case-study) covers the burden of oral cancer (GLOBOCAN 2022, SEER), who is at risk, aggregate statistics of the screening dataset, and what we learned, including the failures.
 
 ## Roadmap
 

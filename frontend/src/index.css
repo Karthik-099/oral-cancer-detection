@@ -4,24 +4,6 @@
 
 @layer base {
   :root {
-    --bg: 246 248 252;
-    --surface: 255 255 255;
-    --surface-2: 236 240 247;
-    --ink: 8 12 24;
-    --muted: 88 98 120;
-    --line: 220 226 238;
-    --brand: 8 145 178;
-    --brand-soft: 214 240 248;
-    --accent: 124 58 237;
-    --low: 16 160 112;
-    --moderate: 217 140 8;
-    --high: 220 56 56;
-    --glow-1: 34 211 238;
-    --glow-2: 139 92 246;
-    --glow-3: 59 130 246;
-    color-scheme: light;
-  }
-  .dark {
     --bg: 5 7 13;
     --surface: 12 16 28;
     --surface-2: 20 26 42;

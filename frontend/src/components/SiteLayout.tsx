@@ -1,34 +1,26 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Github, Menu, Moon, Sun, X } from "lucide-react";
+import { ArrowRight, Github, Menu, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 import { ButtonLink } from "./ui";
 import { toast } from "./Toast";
+import { REPO_URL } from "@/lib/links";
 import { Aurora, ScrollProgress, useSmoothScroll } from "./Atmosphere";
 
 const NAV = [
   { to: "/platform", label: "Platform" },
   { to: "/models", label: "Models" },
+  { to: "/case-study", label: "Case study" },
   { to: "/deployment", label: "Deployment" },
   { to: "/pricing", label: "Pricing" },
   { to: "/roadmap", label: "Roadmap" },
   { to: "/docs", label: "Docs" },
+  { to: "/support", label: "Support" },
 ];
-
-export function ThemeButton({ className }: { className?: string }) {
-  const { dark, toggle } = useTheme();
-  return (
-    <button onClick={toggle} className={cn("grid h-9 w-9 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-ink", className)}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}>
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
-  );
-}
 
 function Header() {
   const [open, setOpen] = useState(false);
@@ -57,7 +49,10 @@ function Header() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <ThemeButton className="hidden sm:grid" />
+          <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="OralAID on GitHub"
+            className="hidden h-9 w-9 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-ink sm:grid">
+            <Github className="h-4 w-4" />
+          </a>
           {user ? (
             <ButtonLink to="/app" size="sm" variant="ink">Open app <ArrowRight className="h-3.5 w-3.5" /></ButtonLink>
           ) : (
@@ -80,7 +75,6 @@ function Header() {
               <div className="mt-3 flex gap-2 border-t border-line pt-4">
                 <ButtonLink to={user ? "/app" : "/register"} variant="ink" className="flex-1">{user ? "Open app" : "Start free"}</ButtonLink>
                 {!user && <ButtonLink to="/login" variant="secondary" className="flex-1">Sign in</ButtonLink>}
-                <ThemeButton />
               </div>
             </div>
           </motion.nav>
@@ -118,7 +112,7 @@ const FOOTER = [
   { title: "Product", links: [["Platform", "/platform"], ["Models", "/models"], ["Pricing", "/pricing"], ["Roadmap", "/roadmap"], ["Desktop app", "/roadmap#desktop"]] },
   { title: "Deploy", links: [["Cloud", "/deployment#cloud"], ["Private VPC", "/deployment#vpc"], ["On-premise", "/deployment#onprem"], ["Security", "/security"]] },
   { title: "Developers", links: [["API docs", "/docs"], ["Quickstart", "/docs#quickstart"], ["Status", "/docs#status"], ["Source code", "https://github.com/Karthik-099/oral-cancer-detection"]] },
-  { title: "Company", links: [["About", "/about"], ["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"]] },
+  { title: "Company", links: [["About", "/about"], ["Case study", "/case-study"], ["Buy us a coffee", "/support"], ["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"]] },
 ];
 
 function Footer() {

@@ -7,7 +7,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
-import { ThemeButton } from "./SiteLayout";
 import { Kbd, Spinner, buttonClass } from "./ui";
 
 const NAV = [
@@ -63,7 +62,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
     <AnimatePresence>
       {open && (
         <motion.div className="fixed inset-0 z-[95] flex items-start justify-center px-4 pt-[14vh]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <div className="absolute inset-0 bg-ink/25 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
           <motion.div initial={{ scale: 0.97, y: -8 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98 }}
             className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-line bg-surface shadow-lift" role="dialog" aria-label="Command palette">
             <div className="flex items-center gap-3 border-b border-line px-4">
@@ -139,7 +138,6 @@ function AppShell() {
             <p className="truncate text-sm font-medium">{user?.full_name}</p>
             <p className="truncate text-xs text-muted">{user?.organization || user?.email}</p>
           </div>
-          <ThemeButton />
           <button onClick={() => { signOut(); navigate("/"); }} className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink" aria-label="Sign out">
             <LogOut className="h-4 w-4" />
           </button>
@@ -160,7 +158,7 @@ function AppShell() {
       <AnimatePresence>
         {mobile && (
           <motion.div className="fixed inset-0 z-50 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-ink/30" onClick={() => setMobile(false)} />
+            <div className="absolute inset-0 bg-black/60" onClick={() => setMobile(false)} />
             <motion.aside initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="absolute inset-y-0 left-0 w-[280px] border-r border-line bg-bg">
               <button onClick={() => setMobile(false)} className="absolute right-3 top-4 rounded-lg p-1 text-muted" aria-label="Close menu"><X className="h-5 w-5" /></button>

@@ -60,7 +60,7 @@ export default function Security() {
             { icon: <HardDrive />, t: "On-premise", d: "Air-gap capable. Images and results never leave your network.", to: "/deployment#onprem" },
           ].map((o, i) => (
             <Reveal key={o.t} delay={i * 0.06}>
-              <Link to={o.to} className="card flex h-full flex-col p-6 transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-lift">
+              <Link to={o.to} className="card-stripe spotlight flex h-full flex-col p-6 transition hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-lift">
                 <IconTile>{o.icon}</IconTile>
                 <h3 className="mt-5 font-semibold">{o.t}</h3>
                 <p className="mt-1.5 text-sm text-muted">{o.d}</p>
@@ -74,7 +74,7 @@ export default function Security() {
         <SectionHeading eyebrow="Responsible AI" title={<>Trust is earned by <em className="italic text-brand">showing the work.</em></>} />
         <div className="mt-12 grid gap-4 sm:grid-cols-2">
           {RESPONSIBLE.map((r, i) => (
-            <Reveal key={r.t} delay={i * 0.05} className="card p-6">
+            <Reveal key={r.t} delay={i * 0.05} className="card-stripe spotlight p-6">
               <IconTile>{r.icon}</IconTile>
               <h3 className="mt-5 font-semibold">{r.t}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-muted">{r.d}</p>
@@ -105,7 +105,7 @@ export default function Security() {
               <Badge>SOC 2: not yet</Badge><Badge>ISO 27001: not yet</Badge><Badge>Medical device clearance: not yet</Badge>
             </Reveal>
           </div>
-          <Reveal delay={0.05} className="card relative overflow-hidden p-7 sm:p-9">
+          <Reveal delay={0.05} className="card-stripe spotlight relative overflow-hidden p-7 sm:p-9">
             <div aria-hidden className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-brand/10 blur-2xl" />
             <IconTile tone="accent"><ShieldAlert /></IconTile>
             <h2 className="mt-6 text-2xl font-semibold tracking-tight">Responsible disclosure</h2>

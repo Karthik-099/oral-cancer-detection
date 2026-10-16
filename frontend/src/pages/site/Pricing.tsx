@@ -135,7 +135,7 @@ export default function Pricing() {
             return (
               <Reveal key={t.id} delay={i * 0.06}
                 className={cn("relative flex flex-col rounded-2xl border p-6 sm:p-7",
-                  t.featured ? "border-brand/40 bg-surface shadow-lift ring-1 ring-brand/20" : "border-line bg-surface shadow-soft")}>
+                  t.featured ? "glow-border spotlight border-transparent bg-[linear-gradient(180deg,rgb(var(--glow-3)/.12),rgb(var(--surface)))] shadow-[0_30px_80px_-30px_rgb(var(--glow-3)/.6)] lg:-translate-y-3" : "spotlight border-line bg-surface/60")}>
                 {t.featured && <Badge tone="brand" className="absolute -top-3 left-6 bg-surface">Most popular</Badge>}
                 <h2 className="text-lg font-semibold">{t.name}</h2>
                 <p className="mt-1 text-sm text-muted">{t.blurb}</p>

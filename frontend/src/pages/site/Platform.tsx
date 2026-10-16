@@ -91,7 +91,7 @@ export default function Platform() {
           body="Grad-CAM shows where the model looked. The Region Localizer turns that attention into a weakly supervised outline using GrabCut. LIME, on demand, scores superpixels by how much they push the call toward suspicious (red) or non-suspicious (green)."
           bullets={["Overlay comparison slider on every image", "Crop-to-region tool to remove fingers, retractors and background", "Explanation usefulness rating captured with feedback"]}
           visual={
-            <div className="card p-5 shadow-lift">
+            <div className="card spotlight p-5 shadow-lift">
               <div className="flex items-center gap-2 text-xs text-muted"><Crop className="h-4 w-4 text-brand" />Crop to region, then re-run</div>
               <div className="mt-4 grid grid-cols-[1fr_auto] items-center gap-5">
                 <div className="relative overflow-hidden rounded-xl border border-line">
@@ -122,7 +122,7 @@ export default function Platform() {
         <FeatureRow eyebrow="Anatomy" title={<>Where it is matters. <em className="italic text-brand">Record it.</em></>}
           body="Tap the site on a schematic mouth map when capturing. The dashboard reuses the same map as a heat map of where findings cluster across your practice."
           bullets={["Lip, palate, gingiva, buccal mucosa, tongue surfaces, floor of mouth, retromolar trigone", "Site-level analytics on the dashboard"]}
-          visual={<div className="card mx-auto max-w-md p-6 shadow-lift"><div className="mb-3 flex items-center gap-2 text-xs text-muted"><MapPin className="h-4 w-4 text-brand" />Select anatomical site</div><MouthMap value="Tongue (lateral)" /></div>} />
+          visual={<div className="card spotlight mx-auto max-w-md p-6 shadow-lift"><div className="mb-3 flex items-center gap-2 text-xs text-muted"><MapPin className="h-4 w-4 text-brand" />Select anatomical site</div><MouthMap value="Tongue (lateral)" /></div>} />
       </Section>
 
       {/* Feedback loop */}
@@ -154,7 +154,7 @@ export default function Platform() {
             { icon: <Database />, t: "HL7 FHIR", d: "DiagnosticReport and ImagingStudy resources for EHR integration.", tag: "On the roadmap" },
             { icon: <Timer />, t: "DICOM", d: "Accept DICOM visible-light studies and write back structured results.", tag: "On the roadmap" },
           ].map((x, i) => (
-            <Reveal key={x.t} delay={i * 0.04} className="card flex flex-col p-6">
+            <Reveal key={x.t} delay={i * 0.04} className="card spotlight flex flex-col p-6">
               <div className="flex items-start justify-between gap-3">
                 <IconTile tone={x.tag === "Available" ? "brand" : "neutral"}>{x.icon}</IconTile>
                 <Badge tone={x.tag === "Available" ? "low" : "neutral"}>{x.tag}</Badge>

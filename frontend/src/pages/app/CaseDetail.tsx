@@ -4,12 +4,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle, ArrowLeft, Brain, Calendar, Check, ChevronRight, Clock, Cpu, Crosshair, FileText, Gauge, HelpCircle, Layers, Lightbulb,
   MapPin, Pencil, Printer, Sparkles, Stethoscope, ThumbsDown, ThumbsUp, Trash2, UserRound, ZoomIn,
+  PenLine,
 } from "lucide-react";
-import { api, ApiError, fileUrl, type CaseDetail as CaseData, type Feedback, type ImageResult } from "@/lib/api";
+import { api, ApiError, fileUrl, type CaseDetail as CaseData, type Feedback, type ImageResult, type Shape } from "@/lib/api";
 import { useSeo } from "@/lib/seo";
 import { cn, formatDate, pct, timeAgo } from "@/lib/utils";
 import { Badge, Button, ButtonLink, Card, EmptyState, ErrorNote, buttonClass } from "@/components/ui";
 import { CompareSlider, ProbabilityMeter, QualityBar, RiskBadge } from "@/components/clinical";
+import { AnnotationOverlay, ImageAnnotator, labelColor } from "@/components/ImageAnnotator";
 import { Modal } from "@/components/Modal";
 import { toast } from "@/components/Toast";
 import {
@@ -191,6 +193,23 @@ function Viewer({ caseId, img, onUpdated }: { caseId: string; img: ImageResult; 
   const [limeBusy, setLimeBusy] = useState(false);
   const [limeError, setLimeError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const shapes = img.annotations ?? [];
+  const [showMarks, setShowMarks] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Shape[]>(shapes);
+  const [savingMarks, setSavingMarks] = useState(false);
+  const saveMarks = async () => {
+    setSavingMarks(true);
+    try {
+      onUpdated(await api.saveAnnotations(caseId, [{ index: img.index, shapes: draft }]));
+      toast.success(draft.length ? `Saved ${draft.length} marked region${draft.length === 1 ? "" : "s"}` : "Marks cleared");
+      setEditing(false);
+    } catch (e) {
+      toast.error(errorMessage(e, "Couldn't save the marks."));
+    } finally {
+      setSavingMarks(false);
+    }
+  };
 
   const original = fileUrl(img.files.original);
   const overlay = {
@@ -248,6 +267,7 @@ function Viewer({ caseId, img, onUpdated }: { caseId: string; img: ImageResult; 
           {tab === "compare" ? (
             <div className="relative">
               <CompareSlider before={original} after={overlay} labelBefore="Original" labelAfter="Grad-CAM" opacity={opacity} />
+              {showMarks && shapes.length > 0 && <AnnotationOverlay shapes={shapes} className="rounded-2xl" />}
               <button onClick={() => setZoom(true)} aria-label="Enlarge"
                 className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-lg bg-black/55 text-white backdrop-blur hover:bg-black/70"><ZoomIn className="h-4 w-4" /></button>
             </div>
@@ -275,6 +295,7 @@ function Viewer({ caseId, img, onUpdated }: { caseId: string; img: ImageResult; 
             <button onClick={() => setZoom(true)} className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl bg-surface-2" aria-label="Enlarge image">
               <img src={original} alt="Original" className="absolute inset-0 h-full w-full object-cover" />
               <img src={overlay} alt={TABS.find((t) => t.value === tab)?.label} className="absolute inset-0 h-full w-full object-cover transition-opacity" style={{ opacity }} />
+              {showMarks && shapes.length > 0 && <AnnotationOverlay shapes={shapes} />}
               <span className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-lg bg-black/55 text-white opacity-0 backdrop-blur transition group-hover:opacity-100"><ZoomIn className="h-4 w-4" /></span>
             </button>
           )}
@@ -282,6 +303,26 @@ function Viewer({ caseId, img, onUpdated }: { caseId: string; img: ImageResult; 
       </AnimatePresence>
 
       <div className="mt-3 space-y-3 px-1">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-muted"><PenLine className="h-3.5 w-3.5" />Marked regions: {shapes.length}</span>
+          {shapes.length > 0 && (
+            <button onClick={() => setShowMarks((v) => !v)} className="rounded-md border border-line px-2 py-1 text-muted hover:text-ink">
+              {showMarks ? "Hide" : "Show"}
+            </button>
+          )}
+          <button onClick={() => { setDraft(shapes); setEditing(true); }} className="rounded-md border border-line px-2 py-1 text-muted hover:text-ink">
+            {shapes.length ? "Edit marks" : "Mark regions"}
+          </button>
+          {shapes.length > 0 && showMarks && (
+            <span className="flex flex-wrap gap-1.5">
+              {[...new Set(shapes.map((sh) => sh.label))].map((l) => (
+                <span key={l} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] text-muted">
+                  <span className="h-2 w-2 rounded-full" style={{ background: labelColor(l) }} />{l}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
         {showOverlayControls && (
           <label className="flex items-center gap-3 text-xs text-muted">
             <Layers className="h-3.5 w-3.5 shrink-0" /><span className="w-14 shrink-0">Overlay</span>
@@ -304,10 +345,22 @@ function Viewer({ caseId, img, onUpdated }: { caseId: string; img: ImageResult; 
         <p className="text-xs text-muted">{TAB_HELP[tab]}</p>
       </div>
 
+      <Modal open={editing} onClose={() => setEditing(false)} title="Mark regions on the photo" className="sm:max-w-5xl">
+        {editing && (
+          <>
+            <ImageAnnotator src={original} value={draft} onChange={setDraft} />
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button onClick={saveMarks} loading={savingMarks}>Save marks</Button>
+            </div>
+          </>
+        )}
+      </Modal>
       <Modal open={zoom} onClose={() => setZoom(false)} title={TABS.find((t) => t.value === tab)?.label} className="sm:max-w-4xl">
         <div className="relative mx-auto aspect-square max-h-[75vh] overflow-hidden rounded-2xl bg-surface-2">
           <img src={original} alt="Original" className="absolute inset-0 h-full w-full object-contain" />
           {overlay && <img src={overlay} alt="Overlay" className="absolute inset-0 h-full w-full object-contain" style={{ opacity }} />}
+          {showMarks && shapes.length > 0 && <AnnotationOverlay shapes={shapes} />}
         </div>
       </Modal>
     </Card>

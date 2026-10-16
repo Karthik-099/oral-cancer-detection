@@ -24,6 +24,10 @@ export interface Quality {
   issues: string[];
 }
 
+export type AnnotationLabel = string;
+export interface Shape { type: "rect" | "polygon"; label: AnnotationLabel; points: [number, number][] }
+export interface ImageAnnotations { index: number; shapes: Shape[] }
+
 export interface ImageResult {
   index: number;
   probability: number;
@@ -40,6 +44,7 @@ export interface ImageResult {
   quality: Quality;
   files: { original: string; gradcam: string; heatmap: string; segmentation: string; lime?: string };
   lime_top_regions?: { segment: number; weight: number }[];
+  annotations?: Shape[];
   inference_ms: number;
 }
 
@@ -225,6 +230,8 @@ export const api = {
   case: (id: string) => request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}`),
   updateCase: (id: string, body: { status?: string; notes?: string }) =>
     request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}`, { method: "PATCH", body: json(body) }),
+  saveAnnotations: (id: string, annotations: ImageAnnotations[]) =>
+    request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/annotations`, { method: "PUT", body: json({ annotations }) }),
   lime: (id: string) => request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/lime`, { method: "POST" }),
   feedback: (id: string, body: Feedback) =>
     request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/feedback`, { method: "PUT", body: json(body) }),

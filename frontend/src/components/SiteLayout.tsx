@@ -9,7 +9,7 @@ import { Logo } from "./Logo";
 import { ButtonLink } from "./ui";
 import { toast } from "./Toast";
 import { REPO_URL } from "@/lib/links";
-import { Aurora, ScrollProgress, useSmoothScroll } from "./Atmosphere";
+import { Aurora, ScrollProgress, useSmoothScroll, useSpotlight } from "./Atmosphere";
 
 const NAV = [
   { to: "/platform", label: "Platform" },
@@ -160,6 +160,7 @@ function Footer() {
 export default function SiteLayout() {
   const { pathname, hash } = useLocation();
   useSmoothScroll();
+  useSpotlight();
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth" });
     else window.scrollTo(0, 0);

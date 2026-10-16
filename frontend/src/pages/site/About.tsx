@@ -45,7 +45,7 @@ export default function About() {
         <SectionHeading eyebrow="Why we exist" title={<>Three reasons, <em className="italic text-brand">one product.</em></>} />
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           {WHY.map((w, i) => (
-            <Reveal key={w.n} delay={i * 0.06} className="card p-7">
+            <Reveal key={w.n} delay={i * 0.06} className="panel-outline p-7">
               <p className="font-mono text-xs text-brand">{w.n}</p>
               <h3 className="mt-4 text-lg font-semibold">{w.t}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{w.d}</p>

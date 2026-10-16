@@ -160,21 +160,21 @@ function HowItWorks() {
     <Section>
       <SectionHeading eyebrow="How it works" title={<>From photo to <em className="italic text-brand">explained</em> risk tier in seconds.</>}
         body="Designed around the way screening actually happens: a quick look, a decision about referral, and a record you can stand behind." />
-      <div className="relative mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div aria-hidden className="absolute left-0 right-0 top-5 hidden h-px bg-gradient-to-r from-transparent via-line to-transparent lg:block" />
+      <ol className="relative mt-16 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+        <div aria-hidden className="absolute left-7 right-7 top-7 hidden h-px bg-[linear-gradient(90deg,rgb(var(--glow-1)/.7),rgb(var(--glow-3)/.5),rgb(var(--glow-2)/.7))] lg:block" />
         {STEPS.map((s, i) => (
-          <Reveal key={s.title} delay={i * 0.08} className="relative">
-            <div className="card h-full p-6 transition hover:-translate-y-0.5 hover:shadow-lift">
-              <div className="flex items-center justify-between">
-                <IconTile>{s.icon}</IconTile>
-                <span className="font-mono text-xs text-muted">0{i + 1}</span>
+          <Reveal key={s.title} delay={i * 0.1} className="relative">
+            <li className="group">
+              <div className="relative grid h-14 w-14 place-items-center rounded-full border border-brand/40 bg-bg text-brand shadow-[0_0_0_6px_rgb(var(--bg)),0_0_30px_rgb(var(--glow-1)/.25)] transition group-hover:shadow-[0_0_0_6px_rgb(var(--bg)),0_0_45px_rgb(var(--glow-1)/.5)]">
+                {s.icon}
+                <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[linear-gradient(135deg,rgb(var(--glow-1)),rgb(var(--glow-2)))] font-mono text-[10px] font-semibold text-white">{i + 1}</span>
               </div>
-              <h3 className="mt-5 text-base font-semibold">{s.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
-            </div>
+              <h3 className="mt-6 font-display text-xl font-semibold">{s.title}</h3>
+              <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted">{s.body}</p>
+            </li>
           </Reveal>
         ))}
-      </div>
+      </ol>
     </Section>
   );
 }
@@ -459,7 +459,7 @@ function BentoCard({ className, icon, title, body, children, delay = 0 }: {
   className?: string; icon: ReactNode; title: string; body: string; children?: ReactNode; delay?: number;
 }) {
   return (
-    <Reveal delay={delay} className={cn("card group relative flex flex-col overflow-hidden p-6 transition hover:shadow-lift", className)}>
+    <Reveal delay={delay} className={cn("card spotlight group relative flex flex-col overflow-hidden p-6 transition hover:shadow-lift", className)}>
       <IconTile>{icon}</IconTile>
       <h3 className="mt-5 text-base font-semibold">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>

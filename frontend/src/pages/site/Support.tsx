@@ -73,7 +73,7 @@ export default function Support() {
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {WAYS.map((w, i) => (
             <Reveal key={w.title} delay={i * 0.08}>
-              <a href={w.href} target="_blank" rel="noreferrer" className="card group block h-full p-6 transition hover:-translate-y-1 hover:border-brand/40">
+              <a href={w.href} target="_blank" rel="noreferrer" className="panel-outline spotlight group block h-full p-7 transition hover:-translate-y-1">
                 <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-brand/10 text-brand"><w.icon className="h-5 w-5" /></div>
                 <h3 className="font-display text-lg font-semibold">{w.title}</h3>
                 <p className="mt-2 text-sm text-muted">{w.body}</p>

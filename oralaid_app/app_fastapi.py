@@ -623,6 +623,50 @@ ALLOWED_SITES = {
     "Buccal mucosa", "Tongue (lateral)", "Tongue (dorsal)", "Tongue (ventral)", "Floor of mouth",
     "Hard palate", "Soft palate", "Gingiva", "Lip", "Retromolar trigone", "Other",
 }
+# Labels a clinician can draw on a photo: every site, a few finer tongue areas, and "Lesion".
+ANNOTATION_LABELS = ALLOWED_SITES | {"Tongue (tip)", "Lesion", "Teeth"}
+MAX_SHAPES_PER_IMAGE = 50
+MAX_POINTS_PER_SHAPE = 200
+
+
+def parse_annotations(raw: str | None, image_count: int) -> dict:
+    """
+    Validate clinician-drawn regions. Input is JSON:
+      [{"index": 0, "shapes": [{"type": "rect"|"polygon", "label": "Lip", "points": [[x, y], ...]}]}]
+    Coordinates are fractions of the image (0..1) so they survive any resizing.
+    Returns {image_index: [shape, ...]}.
+    """
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        assert isinstance(data, list)
+    except (ValueError, AssertionError):
+        raise HTTPException(422, "annotations must be a JSON list.")
+    out: dict[int, list] = {}
+    for entry in data[:image_count]:
+        try:
+            idx = int(entry["index"])
+            shapes = entry.get("shapes", [])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(422, "Each annotation entry needs an index and shapes.")
+        if not 0 <= idx < image_count:
+            raise HTTPException(422, "Annotation index out of range.")
+        clean = []
+        for sh in shapes[:MAX_SHAPES_PER_IMAGE]:
+            kind, label, pts = sh.get("type"), sh.get("label"), sh.get("points")
+            if kind not in ("rect", "polygon") or label not in ANNOTATION_LABELS or not isinstance(pts, list):
+                raise HTTPException(422, "Invalid annotation shape or label.")
+            try:
+                pts = [[round(min(max(float(x), 0.0), 1.0), 4), round(min(max(float(y), 0.0), 1.0), 4)]
+                       for x, y in pts[:MAX_POINTS_PER_SHAPE]]
+            except (TypeError, ValueError):
+                raise HTTPException(422, "Annotation points must be [x, y] pairs.")
+            if (kind == "rect" and len(pts) != 2) or (kind == "polygon" and len(pts) < 3):
+                raise HTTPException(422, "Rectangles need 2 points, polygons at least 3.")
+            clean.append({"type": kind, "label": label, "points": pts})
+        out[idx] = clean
+    return out
 
 
 @app.post("/api/cases", status_code=201)
@@ -636,6 +680,7 @@ async def create_case(
     risk_factors: str | None = Form(None, max_length=500),
     site: str | None = Form(None),
     notes: str | None = Form(None, max_length=4000),
+    annotations: str | None = Form(None, max_length=200_000),
     with_lime: bool = Form(False),
     user: User = Depends(current_user),
     eng=Depends(require_engine),
@@ -650,9 +695,14 @@ async def create_case(
             factors = [str(f)[:40] for f in json.loads(risk_factors)][:10]
         except (ValueError, TypeError):
             raise HTTPException(422, "risk_factors must be a JSON list of strings.")
+    marks = parse_annotations(annotations, len(files))
     images = await _read_images(files)
     case_id = uuid.uuid4().hex[:16]
     results, worst = _run_case(eng, images, case_id, with_lime=with_lime)
+    for idx, shapes in marks.items():
+        results[idx]["annotations"] = shapes
+    if not site:  # use the first labelled site, if any
+        site = next((sh["label"] for shapes in marks.values() for sh in shapes if sh["label"] in ALLOWED_SITES), None)
 
     patient = None
     if patient_reference:
@@ -758,6 +808,26 @@ def update_case(case_id: str, body: CasePatch, request: Request, user: User = De
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(c, k, v)
     audit(db, request, user.id, "case.update", target=case_id, **body.model_dump(exclude_none=True, exclude={"notes"}))
+    db.commit()
+    return case_json(c, detail=True)
+
+
+class AnnotationsIn(BaseModel):
+    annotations: list = Field(max_length=MAX_IMAGES_PER_CASE)
+
+
+@app.put("/api/cases/{case_id}/annotations")
+def save_annotations(case_id: str, body: AnnotationsIn, request: Request, user: User = Depends(current_user),
+                     db: Session = Depends(get_db)):
+    c = _own_case(case_id, user, db)
+    images = json.loads(c.result or "[]")
+    marks = parse_annotations(json.dumps(body.annotations), len(images))
+    for img in images:
+        if img["index"] in marks:
+            img["annotations"] = marks[img["index"]]
+    c.result = json.dumps(images)
+    audit(db, request, user.id, "case.annotate", target=case_id,
+          shapes=sum(len(v) for v in marks.values()))
     db.commit()
     return case_json(c, detail=True)
 

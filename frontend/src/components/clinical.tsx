@@ -103,7 +103,7 @@ export function CompareSlider({ before, after, labelBefore = "Original", labelAf
             if (e.key === "ArrowLeft") setPos((p) => Math.max(0, p - 5));
             if (e.key === "ArrowRight") setPos((p) => Math.min(100, p + 5));
           }}
-          className="absolute top-1/2 -ml-5 -mt-5 grid h-10 w-10 place-items-center rounded-full bg-white text-ink shadow-lift"
+          className="absolute top-1/2 -ml-5 -mt-5 grid h-10 w-10 place-items-center rounded-full bg-white text-zinc-900 shadow-lift"
         >
           <MoveHorizontal className="h-4 w-4" />
         </button>

@@ -158,3 +158,27 @@ def test_review_filter_and_filtered_export(client, auth, oral_jpeg):
     assert client.get("/api/cases?review=true", headers=auth).json()["total"] == 0
     assert cid not in client.get("/api/cases/export.csv?tier=low", headers=auth).text
     assert cid in client.get("/api/cases/export.csv?tier=high", headers=auth).text
+
+
+def test_annotations_saved_validated_and_editable(client, auth, oral_jpeg):
+    marks = [{"index": 0, "shapes": [
+        {"type": "rect", "label": "Lip", "points": [[0.1, 0.1], [0.4, 0.3]]},
+        {"type": "polygon", "label": "Lesion", "points": [[0.5, 0.5], [0.7, 0.5], [0.6, 1.4]]},
+    ]}]
+    r = client.post("/api/cases", headers=auth, files=[("files", ("a.jpg", oral_jpeg, "image/jpeg"))],
+                    data={"annotations": json.dumps(marks)})
+    assert r.status_code == 201, r.text
+    case = r.json()
+    shapes = case["images"][0]["annotations"]
+    assert [s["label"] for s in shapes] == ["Lip", "Lesion"]
+    assert shapes[1]["points"][2] == [0.6, 1.0]  # clamped into the image
+    assert case["site"] == "Lip"  # first labelled site fills the case site
+
+    bad = [{"index": 0, "shapes": [{"type": "rect", "label": "<script>", "points": [[0, 0], [1, 1]]}]}]
+    r = client.post("/api/cases", headers=auth, files=[("files", ("a.jpg", oral_jpeg, "image/jpeg"))],
+                    data={"annotations": json.dumps(bad)})
+    assert r.status_code == 422
+
+    edit = [{"index": 0, "shapes": [{"type": "rect", "label": "Tongue (tip)", "points": [[0.2, 0.2], [0.3, 0.3]]}]}]
+    r = client.put(f"/api/cases/{case['id']}/annotations", headers=auth, json={"annotations": edit})
+    assert r.status_code == 200 and r.json()["images"][0]["annotations"][0]["label"] == "Tongue (tip)"

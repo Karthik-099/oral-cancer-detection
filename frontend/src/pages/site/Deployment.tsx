@@ -72,7 +72,7 @@ function ArchDiagram({ option }: { option: Option }) {
   // Vertical layout
   const VY = 92, VH = 60, VW = 220, VX = 70, VY0 = 54;
   return (
-    <div className="card overflow-hidden p-4 sm:p-6">
+    <div className="card spotlight overflow-hidden p-4 sm:p-6">
       <svg viewBox="0 0 776 220" className="hidden h-auto w-full md:block" role="img" aria-label={`Architecture: ${nodes.map((n) => n.label).join(" to ")}. ${b.label}.`}>
         <rect x={X0 + b.from * W - 10} y={46} width={(5 - b.from) * W - 8} height={150} rx={18} className="fill-brand/[0.04] stroke-brand/40" strokeDasharray="5 5" />
         <text x={X0 + b.from * W + 4} y={68} className="fill-brand text-[11px] font-medium">{b.label}</text>
@@ -161,7 +161,7 @@ export default function Deployment() {
         <div className="grid gap-5 lg:grid-cols-3">
           {OPTIONS.map((o, i) => (
             <Reveal key={o.id} delay={i * 0.06} className="h-full">
-              <article id={o.id} className="card flex h-full scroll-mt-24 flex-col p-7 transition hover:shadow-lift">
+              <article id={o.id} className="card spotlight flex h-full scroll-mt-24 flex-col p-7 transition hover:shadow-lift">
                 <div className="flex items-start justify-between gap-3">
                   <IconTile>{o.icon}</IconTile>
                   <Badge tone="brand">{o.tagline}</Badge>
@@ -221,7 +221,7 @@ export default function Deployment() {
               { icon: <Gauge />, t: "Recommended", d: "Busy clinic or small network", specs: [["CPU", "8+ cores"], ["RAM", "16 GB"], ["Disk", "100 GB SSD"], ["Workers", "2 to 4"]] },
               { icon: <Zap />, t: "Accelerated", d: "High volume or research", specs: [["CPU", "8+ cores"], ["RAM", "32 GB"], ["GPU", "NVIDIA, 8 GB+ VRAM"], ["Workers", "4+"]] },
             ].map((h, i) => (
-              <Reveal key={h.t} delay={i * 0.06} className="card p-5">
+              <Reveal key={h.t} delay={i * 0.06} className="card spotlight p-5">
                 <div className="flex items-center gap-3"><IconTile tone="neutral">{h.icon}</IconTile><div><h3 className="font-semibold">{h.t}</h3><p className="text-xs text-muted">{h.d}</p></div></div>
                 <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm lg:grid-cols-4">
                   {h.specs.map(([k, v]) => <div key={k}><dt className="text-[11px] uppercase tracking-wider text-muted">{k}</dt><dd className="font-medium">{v}</dd></div>)}
@@ -243,7 +243,7 @@ export default function Deployment() {
               Private VPC and on-premise deployments are part of our Enterprise plan and include a validation run on a sample of your own images.
             </Reveal>
           </div>
-          <Reveal delay={0.05} className="card p-6 sm:p-8">
+          <Reveal delay={0.05} className="card spotlight p-6 sm:p-8">
             <LeadForm kind="deployment"
               select={{ label: "Preferred option", name: "preferred_option", options: [
                 { value: "cloud", label: "Cloud SaaS" }, { value: "vpc", label: "Dedicated private VPC" },

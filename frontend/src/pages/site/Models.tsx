@@ -161,7 +161,7 @@ function TierScale({ threshold, high }: { threshold: number; high: number }) {
       </div>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {tiers.map((t) => (
-          <div key={t.label} className="card p-5">
+          <div key={t.label} className="card spotlight p-5">
             <div className="flex items-center justify-between">
               <span className={cn("flex items-center gap-2 text-sm font-semibold", t.text)}><span className={cn("h-2 w-2 rounded-full", t.cls)} />{t.label} risk</span>
               <span className="font-mono text-xs text-muted">{t.range}</span>
@@ -260,7 +260,7 @@ export default function Models() {
           body="Known failure modes, stated up front. Each one is a reason the clinician makes the final call." />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {LIMITATIONS.map((l, i) => (
-            <Reveal key={l.t} delay={i * 0.04} className="card p-6">
+            <Reveal key={l.t} delay={i * 0.04} className="card spotlight p-6">
               <IconTile tone="accent">{l.icon}</IconTile>
               <h3 className="mt-5 font-semibold">{l.t}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{l.d}</p>

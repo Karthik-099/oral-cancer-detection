@@ -67,8 +67,8 @@ export default function CaseStudy() {
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {BURDEN.map((b, i) => (
             <Reveal key={b.label} delay={i * 0.07}>
-              <div className="card h-full p-6">
-                <p className="display text-4xl sm:text-5xl"><Counter to={b.value} suffix={b.suffix} /></p>
+              <div className="card-stripe spotlight h-full p-6 pt-7">
+                <p className="stat-num text-4xl sm:text-5xl"><Counter to={b.value} suffix={b.suffix} /></p>
                 <p className="mt-3 text-sm">{b.label}</p>
                 <p className="mt-4 text-[11px] uppercase tracking-wider text-muted">{b.source}</p>
               </div>
@@ -102,7 +102,7 @@ export default function CaseStudy() {
       <Section>
         <SectionHeading eyebrow="03 · Our data" title={<>Built on real <em>screening data.</em></>}
           body="OralAID's model was trained and evaluated on intraoral photographs from a community oral cancer screening programme in India, each case reviewed by a specialist. The figures below are aggregates; no individual records are published." />
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid divide-y divide-line border-y border-line sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
           {[
             [<Counter to={DATASET.patients} />, "people screened"],
             [<Counter to={DATASET.images} />, "intraoral photographs"],
@@ -110,19 +110,19 @@ export default function CaseStudy() {
             [<Counter to={DATASET.tobacco} suffix="%" />, "used tobacco or areca nut, now or in the past"],
           ].map(([v, l], i) => (
             <Reveal key={i} delay={i * 0.07}>
-              <div className="card h-full p-6"><p className="display text-4xl sm:text-5xl">{v}</p><p className="mt-3 text-sm text-muted">{l}</p></div>
+              <div className="px-1 py-8 sm:px-6 lg:first:pl-0"><p className="stat-num text-5xl sm:text-6xl">{v}</p><p className="mt-4 max-w-[15rem] text-sm text-muted">{l}</p></div>
             </Reveal>
           ))}
         </div>
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <Reveal>
-            <div className="card h-full space-y-4 p-6 sm:p-8">
+            <div className="card spotlight h-full space-y-4 p-6 sm:p-8">
               <p className="eyebrow">Provisional diagnosis (people)</p>
               {DIAGNOSES.map(([l, v], i) => <Bar key={l} label={l} value={v} max={245} suffix="" delay={i * 0.06} />)}
             </div>
           </Reveal>
           <Reveal delay={0.08}>
-            <div className="card h-full space-y-4 p-6 sm:p-8">
+            <div className="panel-outline h-full space-y-4 p-6 sm:p-8">
               <p className="eyebrow">Habits at the time of screening</p>
               {EXPOSURE.map(([l, v], i) => <Bar key={l} label={l} value={v} delay={i * 0.06} />)}
               <p className="pt-2 text-sm text-muted">
@@ -135,17 +135,22 @@ export default function CaseStudy() {
 
       <Section>
         <SectionHeading eyebrow="04 · What we learned" title={<>Honest results, <em>including the misses.</em></>} />
-        <div className="mt-12 grid gap-5 md:grid-cols-3">
+        <ol className="mt-12 grid gap-0 md:grid-cols-3 md:gap-10">
           {[
             ["A first model that failed", "Our first classifier (MobileNetV2) scored below chance on held-out specialist labels (AUC 0.41). We retired it and say so publicly."],
             ["A model that works, with limits", "OralNet-B4 reaches 76.8% held-out validation accuracy and AUC 0.83 on internal evaluation, with 90% precision in the High-risk tier. External validation is still pending."],
             ["Explanations catch shortcuts", "Grad-CAM showed the model sometimes looks at mirrors, retractors or fingers. That is why every result shows its heatmap, and why the app has a crop tool."],
           ].map(([t, b], i) => (
             <Reveal key={t} delay={i * 0.08}>
-              <div className="card h-full p-6"><h3 className="font-display text-lg font-semibold">{t}</h3><p className="mt-3 text-sm text-muted">{b}</p></div>
+              <li className="relative border-l border-line py-6 pl-8 md:border-l-0 md:border-t md:pl-0 md:pt-8">
+                <span aria-hidden className="absolute -left-px top-6 h-10 w-px bg-[linear-gradient(rgb(var(--glow-1)),rgb(var(--glow-2)))] md:-top-px md:left-0 md:h-px md:w-16 md:bg-[linear-gradient(90deg,rgb(var(--glow-1)),rgb(var(--glow-2)))]" />
+                <span className="font-mono text-xs text-brand">0{i + 1}</span>
+                <h3 className="mt-2 font-display text-xl font-semibold">{t}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{b}</p>
+              </li>
             </Reveal>
           ))}
-        </div>
+        </ol>
       </Section>
 
       <Section>

@@ -2,9 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState, type DragEven
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Camera, Check, Crop, Hand, ImageOff, ImagePlus, Info, Lightbulb, Loader2, Maximize, Ruler, ScanLine, Sparkles, Sun, Trash2, Upload, UserRound, Wind, X,
+  Camera, Check, Crop, PenLine, Hand, ImageOff, ImagePlus, Info, Lightbulb, Loader2, Maximize, Ruler, ScanLine, Sparkles, Sun, Trash2, Upload, UserRound, Wind, X,
 } from "lucide-react";
-import { ApiError, api, type PatientRow } from "@/lib/api";
+import { ApiError, api, type PatientRow, type Shape } from "@/lib/api";
+import { AnnotationOverlay, ImageAnnotator } from "@/components/ImageAnnotator";
 import { useSeo } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/AppShell";
@@ -16,14 +17,16 @@ import { toast } from "@/components/Toast";
 import { CameraCapture } from "@/components/app/CameraCapture";
 import { Chip, patientName, RISK_FACTORS, Segmented, Toggle } from "@/components/app/kit";
 
-const Mouth3D = lazy(() => import("@/components/three/Mouth3D"));
+const loadMouth3D = () => import("@/components/three/Mouth3D");
+const Mouth3D = lazy(loadMouth3D);
+void loadMouth3D(); // start downloading as soon as the New Analysis page opens
 
 const MAX_FILES = 6;
 const MAX_BYTES = 15 * 1024 * 1024;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
 const OK_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
-interface Item { id: string; file: File; url: string }
+interface Item { id: string; file: File; url: string; shapes: Shape[] }
 
 const SEX_OPTIONS = [
   { value: "female", label: "Female" },
@@ -71,6 +74,7 @@ export default function NewCase() {
   const [drag, setDrag] = useState(false);
   const [camera, setCamera] = useState(false);
   const [cropping, setCropping] = useState<Item | null>(null);
+  const [annotating, setAnnotating] = useState<string | null>(null);
   const [site, setSite] = useState<Site | null>(null);
   const [picker, setPicker] = useState<"3d" | "2d">("3d");
   const [reference, setReference] = useState(params.get("ref") ?? "");
@@ -119,7 +123,7 @@ export default function NewCase() {
       if (!isAcceptable(f)) { rejectedType++; continue; }
       if (f.size > MAX_BYTES) { rejectedSize++; continue; }
       if (accepted.length >= room) break;
-      accepted.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, file: f, url: URL.createObjectURL(f) });
+      accepted.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, file: f, url: URL.createObjectURL(f), shapes: [] });
     }
     if (rejectedType) toast.error(`${rejectedType} file${rejectedType > 1 ? "s" : ""} skipped. Use JPEG, PNG, WebP or HEIC.`);
     if (rejectedSize) toast.error(`${rejectedSize} file${rejectedSize > 1 ? "s were" : " was"} over 15 MB.`);
@@ -136,8 +140,9 @@ export default function NewCase() {
   const replace = (id: string, file: File) => setItems((prev) => prev.map((p) => {
     if (p.id !== id) return p;
     URL.revokeObjectURL(p.url);
-    return { ...p, file, url: URL.createObjectURL(file) };
+    return { ...p, file, url: URL.createObjectURL(file), shapes: [] }; // cropping moves coordinates, so marks reset
   }));
+  const setShapes = (id: string, shapes: Shape[]) => setItems((prev) => prev.map((p) => (p.id === id ? { ...p, shapes } : p)));
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -162,6 +167,8 @@ export default function NewCase() {
     if (sex) fd.append("patient_sex", sex);
     if (factors.length) fd.append("risk_factors", JSON.stringify(factors));
     if (notes.trim()) fd.append("notes", notes.trim());
+    const marks = items.map((it, index) => ({ index, shapes: it.shapes })).filter((m) => m.shapes.length);
+    if (marks.length) fd.append("annotations", JSON.stringify(marks));
     fd.append("with_lime", withLime ? "true" : "false");
     setSubmitting(true);
     try {
@@ -243,16 +250,22 @@ export default function NewCase() {
                       <motion.li key={it.id} layout initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
                         className="group relative aspect-square overflow-hidden rounded-xl border border-line bg-surface-2">
                         <Preview src={it.url} name={it.file.name} />
+                        {it.shapes.length > 0 && <AnnotationOverlay shapes={it.shapes} />}
+                        {it.shapes.length > 0 && <span className="absolute right-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">{it.shapes.length} marked</span>}
                         {idx === 0 && <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">Primary</span>}
                         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6">
                           <span className="truncate text-[10px] text-white/80">{(it.file.size / 1024 / 1024).toFixed(1)} MB</span>
                           <div className="flex gap-1">
+                            <button type="button" onClick={() => setAnnotating(it.id)} aria-label={`Mark regions on image ${idx + 1}`}
+                              className="flex h-7 items-center gap-1 rounded-md bg-white/90 px-2 text-[11px] font-medium text-zinc-900 hover:bg-white">
+                              <PenLine className="h-3 w-3" />Mark
+                            </button>
                             <button type="button" onClick={() => setCropping(it)} aria-label={`Crop image ${idx + 1}`}
-                              className="flex h-7 items-center gap-1 rounded-md bg-white/90 px-2 text-[11px] font-medium text-ink hover:bg-white">
+                              className="flex h-7 items-center gap-1 rounded-md bg-white/90 px-2 text-[11px] font-medium text-zinc-900 hover:bg-white">
                               <Crop className="h-3 w-3" />Crop
                             </button>
                             <button type="button" onClick={() => remove(it.id)} aria-label={`Remove image ${idx + 1}`}
-                              className="grid h-7 w-7 place-items-center rounded-md bg-white/90 text-ink hover:bg-white hover:text-high">
+                              className="grid h-7 w-7 place-items-center rounded-md bg-white/90 text-zinc-900 hover:bg-white hover:text-red-600">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -375,6 +388,12 @@ export default function NewCase() {
         {camera && <CameraCapture onCapture={(f) => { addFiles([f]); toast.success("Photo added"); }} onClose={() => setCamera(false)} />}
       </Modal>
 
+      <Modal open={!!annotating} onClose={() => setAnnotating(null)} title="Mark regions on the photo" className="sm:max-w-5xl">
+        {(() => {
+          const it = items.find((i) => i.id === annotating);
+          return it ? <ImageAnnotator src={it.url} value={it.shapes} onChange={(sh) => setShapes(it.id, sh)} onDone={() => setAnnotating(null)} /> : null;
+        })()}
+      </Modal>
       <Modal open={!!cropping} onClose={() => setCropping(null)} title="Crop image" className="sm:max-w-2xl">
         {cropping && (
           <ImageCropper file={cropping.file} onCancel={() => setCropping(null)}

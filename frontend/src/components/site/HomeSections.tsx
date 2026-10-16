@@ -11,7 +11,17 @@ import { Section, SectionHeading } from "@/components/site/marketing";
 import { MouthMap, SITES, type Site } from "@/components/MouthMap";
 import { Spinner } from "@/components/ui";
 
-const Mouth3D = lazy(() => import("@/components/three/Mouth3D"));
+const loadMouth3D = () => import("@/components/three/Mouth3D");
+const Mouth3D = lazy(loadMouth3D);
+
+/** Fetch the 3D chunk while the browser is idle, so it's ready before the user scrolls to it. */
+export function usePrefetch3D() {
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(() => void loadMouth3D(), { timeout: 3000 });
+    else setTimeout(() => void loadMouth3D(), 1500);
+  }, []);
+}
 
 /* ------------------------------------------------------------- Counters */
 
@@ -48,21 +58,19 @@ export function CaseStudy() {
       <SectionHeading eyebrow="Case study" title={<>Why early screening <em>matters.</em></>}
         body="Oral cancer is one of the most common cancers in India, and most of it is linked to tobacco, areca nut and alcohol. It is also one of the most visible: many lesions can be seen in the mouth long before they become dangerous." />
 
-      <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-14 grid grid-cols-1 divide-y divide-line border-y border-line sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
         {BURDEN.map((b, i) => (
-          <Reveal key={b.label} delay={i * 0.07}>
-            <div className="card h-full p-6">
-              <p className="display text-4xl sm:text-5xl"><Counter to={b.value} suffix={b.suffix} /></p>
-              <p className="mt-3 text-sm text-ink/90">{b.label}</p>
-              <p className="mt-4 text-[11px] uppercase tracking-wider text-muted">{b.source}</p>
-            </div>
+          <Reveal key={b.label} delay={i * 0.07} className="px-1 py-8 sm:px-6 lg:first:pl-0">
+            <p className="stat-num text-5xl sm:text-6xl"><Counter to={b.value} suffix={b.suffix} /></p>
+            <p className="mt-4 max-w-[16rem] text-sm text-ink/85">{b.label}</p>
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-wider text-muted">{b.source}</p>
           </Reveal>
         ))}
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
         <Reveal>
-          <div className="card h-full p-6 sm:p-8">
+          <div className="card spotlight h-full p-6 sm:p-8">
             <p className="eyebrow mb-1">5-year relative survival, by stage at diagnosis</p>
             <p className="mb-6 text-xs text-muted">US SEER, oral cavity and pharynx, 2015 to 2021</p>
             <div className="space-y-5">
@@ -81,7 +89,7 @@ export function CaseStudy() {
           </div>
         </Reveal>
         <Reveal delay={0.1}>
-          <div className="card h-full p-6 sm:p-8">
+          <div className="panel-outline h-full p-6 sm:p-8">
             <p className="eyebrow mb-4">Who is at risk</p>
             <ul className="space-y-3 text-sm">
               {[
@@ -122,7 +130,8 @@ const SITE_NOTES: Partial<Record<Site, string>> = {
 export function Site3DShowcase() {
   const [site, setSite] = useState<Site | null>("Buccal mucosa");
   const ref = useRef<HTMLDivElement>(null);
-  const near = useInView(ref, { once: true, margin: "300px" });
+  const near = useInView(ref, { once: true, margin: "900px" });
+  usePrefetch3D();
   return (
     <Section id="anatomy">
       <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
@@ -173,12 +182,12 @@ export function FutureVision() {
       <SectionHeading eyebrow="What's next" title={<>From the browser to <em>the dental chair.</em></>} align="center"
         body="Our goal is screening that happens automatically, wherever a mouth is examined: on a clinic PC, inside the intraoral camera, or on a device in a rural screening camp." />
       <div className="relative mt-16">
-        <div aria-hidden className="absolute left-[12%] right-[12%] top-[60px] hidden h-px bg-[linear-gradient(90deg,transparent,rgb(var(--glow-1)/.6),rgb(var(--glow-2)/.6),transparent)] lg:block" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {FUTURE.map((f, i) => (
             <Reveal key={f.title} delay={i * 0.1}>
-              <div className="card group relative h-full p-6 transition hover:-translate-y-1 hover:border-brand/40">
-                <div className="relative mb-5 grid h-[72px] w-[72px] place-items-center rounded-2xl border border-line bg-surface-2 shadow-[0_0_40px_rgb(var(--glow-1)/.12)] transition group-hover:shadow-[0_0_50px_rgb(var(--glow-1)/.3)]">
+              <div className="card-stripe spotlight group relative h-full p-6 pt-7 transition hover:-translate-y-1">
+                <span aria-hidden className="absolute right-4 top-3 font-display text-6xl font-bold text-ink/[.05]">0{i + 1}</span>
+                <div className="relative mb-5 grid h-[72px] w-[72px] place-items-center rounded-full border border-brand/30 bg-[radial-gradient(circle_at_30%_30%,rgb(var(--glow-1)/.25),transparent_70%)] transition group-hover:shadow-[0_0_50px_rgb(var(--glow-1)/.35)]">
                   <f.icon className="h-8 w-8 text-brand" />
                 </div>
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">{f.tag}</span>
@@ -209,19 +218,19 @@ const STACK = [
 
 function Logo({ icon }: { icon: (typeof STACK)[number] }) {
   return (
-    <div className="group flex shrink-0 items-center gap-3 px-7" title={icon.title}>
-      <svg viewBox="0 0 24 24" className="h-7 w-7 fill-muted transition group-hover:fill-[var(--c)]" style={{ ["--c" as string]: `#${icon.hex}` }} aria-hidden>
+    <div className="group flex shrink-0 items-center gap-4 px-10 sm:px-12" title={icon.title}>
+      <svg viewBox="0 0 24 24" className="h-10 w-10 fill-muted transition group-hover:fill-[var(--c)] sm:h-12 sm:w-12" style={{ ["--c" as string]: `#${icon.hex}` }} aria-hidden>
         <path d={icon.path} />
       </svg>
-      <span className="whitespace-nowrap font-display text-base font-semibold text-muted transition group-hover:text-ink">{icon.title}</span>
+      <span className="whitespace-nowrap font-display text-xl font-semibold text-muted transition group-hover:text-ink sm:text-2xl">{icon.title}</span>
     </div>
   );
 }
 
 export function BuiltWith() {
   return (
-    <section aria-label="Technologies OralAID is built with" className="relative border-y border-line py-10">
-      <p className="mb-7 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Built with open technology</p>
+    <section aria-label="Technologies OralAID is built with" className="relative border-y border-line py-14">
+      <p className="mb-9 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted">Built with open technology</p>
       <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_12%,black_88%,transparent)]">
         <div className="flex w-max animate-marquee hover:[animation-play-state:paused]">
           {[...STACK, ...STACK].map((icon, i) => <Logo key={`${icon.slug}-${i}`} icon={icon} />)}

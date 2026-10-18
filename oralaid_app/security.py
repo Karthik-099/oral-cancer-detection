@@ -81,13 +81,20 @@ def decode_token(token: str) -> dict:
 # ── API keys ───────────────────────────────────────────────────────────────
 
 def new_api_key():
-    """Returns (plaintext, prefix, sha256). Only the hash is stored."""
+    """Returns (plaintext, prefix, bcrypt-hash). Only the hash is stored."""
     raw = API_KEY_PREFIX + secrets.token_urlsafe(32)
-    return raw, raw[:12], hashlib.sha256(raw.encode()).hexdigest()
+    return raw, raw[:12], pwd_context.hash(raw)
 
 
 def hash_api_key(raw: str) -> str:
-    return hashlib.sha256(raw.encode()).hexdigest()
+    return pwd_context.hash(raw)
+
+
+def verify_api_key(raw: str, stored_hash: str) -> bool:
+    try:
+        return pwd_context.verify(raw, stored_hash)
+    except ValueError:
+        return False
 
 
 # ── signed file URLs ───────────────────────────────────────────────────────

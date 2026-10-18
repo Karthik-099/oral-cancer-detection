@@ -205,7 +205,12 @@ def current_user(
     """Accepts a session JWT (web app) or an API key (integrations)."""
     raw_key = x_api_key or (creds.credentials if creds and creds.credentials.startswith(sec.API_KEY_PREFIX) else None)
     if raw_key:
-        key = db.query(ApiKey).filter(ApiKey.key_hash == sec.hash_api_key(raw_key), ApiKey.revoked.is_(False)).first()
+        key = None
+        candidates = db.query(ApiKey).filter(ApiKey.revoked.is_(False)).all()
+        for candidate in candidates:
+            if sec.verify_api_key(raw_key, candidate.key_hash):
+                key = candidate
+                break
         if not key:
             raise HTTPException(401, "Invalid API key")
         key.last_used_at = datetime.utcnow()

@@ -1,58 +1,58 @@
-name: Deploy
+# name: Deploy
 
-# Runs on every push to "prod": CI + security must pass, then the API is
-# deployed to the Oracle VM over SSH. The website deploys on Netlify by itself
-# (Netlify's GitHub integration builds the prod branch).
-#
-# Repository secrets (Settings -> Secrets and variables -> Actions):
-#   ORACLE_HOST       public IP or hostname of the VM
-#   ORACLE_USER       SSH user, usually "ubuntu"
-#   ORACLE_SSH_KEY    private key (the full PEM text) that can log in to the VM
-#   PRODUCTION_API    optional, e.g. https://api.<vm-ip>.sslip.io (post-deploy check)
-# Until ORACLE_HOST is set the deploy step is skipped and the run stays green.
+# # Runs on every push to "prod": CI + security must pass, then the API is
+# # deployed to the Oracle VM over SSH. The website deploys on Netlify by itself
+# # (Netlify's GitHub integration builds the prod branch).
+# #
+# # Repository secrets (Settings -> Secrets and variables -> Actions):
+# #   ORACLE_HOST       public IP or hostname of the VM
+# #   ORACLE_USER       SSH user, usually "ubuntu"
+# #   ORACLE_SSH_KEY    private key (the full PEM text) that can log in to the VM
+# #   PRODUCTION_API    optional, e.g. https://api.<vm-ip>.sslip.io (post-deploy check)
+# # Until ORACLE_HOST is set the deploy step is skipped and the run stays green.
 
-on:
-  push:
-    branches: [prod]
-  workflow_dispatch:
+# on:
+#   push:
+#     branches: [prod]
+#   workflow_dispatch:
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+# concurrency:
+#   group: deploy-production
+#   cancel-in-progress: false
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-jobs:
-  ci:
-    uses: ./.github/workflows/ci.yml
-  security:
-    uses: ./.github/workflows/security.yml
-    permissions: { contents: read, security-events: write, actions: read }
+# jobs:
+#   ci:
+#     uses: ./.github/workflows/ci.yml
+#   security:
+#     uses: ./.github/workflows/security.yml
+#     permissions: { contents: read, security-events: write, actions: read }
 
-  api:
-    name: Deploy API to Oracle VM
-    needs: [ci, security]
-    runs-on: ubuntu-24.04
-    environment: production
-    env:
-      HOST: ${{ secrets.ORACLE_HOST }}
-      USER: ${{ secrets.ORACLE_USER }}
-      KEY: ${{ secrets.ORACLE_SSH_KEY }}
-      API: ${{ secrets.PRODUCTION_API }}
-    steps:
-      - name: Deploy over SSH
-        if: env.HOST != ''
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/id_deploy "${USER:-ubuntu}@$HOST" 'bash ~/oral-cancer-detection/deploy/oracle/deploy.sh'
-      - name: Post-deploy health check
-        if: env.API != ''
-        run: |
-          for i in $(seq 1 30); do curl -fsS "$API/api/health" && exit 0; sleep 10; done
-          exit 1
-      - name: Skipped
-        if: env.HOST == ''
-        run: echo "ORACLE_HOST not set yet; skipping deploy."
+#   api:
+#     name: Deploy API to Oracle VM
+#     needs: [ci, security]
+#     runs-on: ubuntu-24.04
+#     environment: production
+#     env:
+#       HOST: ${{ secrets.ORACLE_HOST }}
+#       USER: ${{ secrets.ORACLE_USER }}
+#       KEY: ${{ secrets.ORACLE_SSH_KEY }}
+#       API: ${{ secrets.PRODUCTION_API }}
+#     steps:
+#       - name: Deploy over SSH
+#         if: env.HOST != ''
+#         run: |
+#           install -m 700 -d ~/.ssh
+#           printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+#           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+#           ssh -i ~/.ssh/id_deploy "${USER:-ubuntu}@$HOST" 'bash ~/oral-cancer-detection/deploy/oracle/deploy.sh'
+#       - name: Post-deploy health check
+#         if: env.API != ''
+#         run: |
+#           for i in $(seq 1 30); do curl -fsS "$API/api/health" && exit 0; sleep 10; done
+#           exit 1
+#       - name: Skipped
+#         if: env.HOST == ''
+#         run: echo "ORACLE_HOST not set yet; skipping deploy."

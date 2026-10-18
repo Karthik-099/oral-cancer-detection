@@ -39,7 +39,8 @@ def test_signed_file_urls():
 def test_api_key_hashing():
     raw, prefix, digest = sec.new_api_key()
     assert raw.startswith("oak_") and raw.startswith(prefix)
-    assert sec.hash_api_key(raw) == digest
+    assert sec.verify_api_key(raw, digest)
+    assert not sec.verify_api_key("oak_invalid", digest)
 
 
 @pytest.mark.parametrize("data,kind", [

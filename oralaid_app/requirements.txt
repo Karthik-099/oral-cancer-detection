@@ -36,7 +36,7 @@ prometheus-client==0.17.1
 
 # Security
 cryptography==41.0.4
-python-jose==3.3.0
+python-jose==3.5.0
 
 # AWS
 boto3==1.28.85

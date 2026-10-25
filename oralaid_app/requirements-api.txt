@@ -2,7 +2,7 @@
 #   pip install -r requirements-api.txt --extra-index-url https://download.pytorch.org/whl/cpu
 # Versions are pinned and audited in CI (pip-audit). Works on x86_64 and ARM64 (Oracle Ampere).
 torch==2.8.0
-torchvision==0.23.0
+torchvision==0.29.1
 numpy==2.2.6
 pillow==12.3.0
 opencv-python-headless==4.11.0.86

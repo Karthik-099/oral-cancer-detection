@@ -6,7 +6,7 @@ Werkzeug==2.3.7
 
 # Deep Learning and AI
 torch==2.0.1
-torchvision==0.15.2
+torchvision==0.29.1
 
 # Computer Vision and Image Processing
 opencv-python-headless==4.8.1.78

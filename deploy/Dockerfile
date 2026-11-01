@@ -13,14 +13,14 @@ COPY frontend/ ./
 RUN npm run build
 
 # ── 2. python deps ─────────────────────────────────────────────────────────
-FROM python:3.11-slim AS deps
+FROM python:3.15-slim AS deps
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 COPY oralaid_app/requirements-api.txt /tmp/
 RUN pip install --prefix=/install -r /tmp/requirements-api.txt \
       --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ── 3. runtime ─────────────────────────────────────────────────────────────
-FROM python:3.11-slim
+FROM python:3.15-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     ORALAID_ENV=production \
